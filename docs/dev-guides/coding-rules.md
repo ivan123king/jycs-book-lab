@@ -113,7 +113,7 @@ export function detectChapters(text: string): ChapterCandidate[] {
 
 ## 前端开发规则
 
-1. 阅读页优先保证正文可读。
+1. 阅读工作台优先保证正文可读。
 2. 选文拆解路径要短。
 3. 拆解表单由拆解方案驱动。
 4. 不在组件中硬编码固定拆解字段。
