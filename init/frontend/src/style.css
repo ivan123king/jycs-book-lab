@@ -128,14 +128,26 @@ p {
     background: #eef1f4;
 }
 
+.content-shell-full {
+    height: 100vh;
+}
+
 .content-scroll {
     height: calc(100vh - 68px);
+}
+
+.content-scroll-full {
+    height: 100vh;
 }
 
 .page-section {
     min-height: calc(100vh - 68px);
     padding: 24px;
     box-sizing: border-box;
+}
+
+.library-page {
+    min-height: 100vh;
 }
 
 .section-heading {
@@ -152,6 +164,42 @@ p {
     margin-top: 6px;
     color: #647180;
     font-size: 13px;
+}
+
+.library-page-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.library-page-header h1 {
+    color: #15202b;
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.library-page-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.library-page-search {
+    width: 180px;
+}
+
+.library-heading-path {
+    max-width: min(760px, calc(100vw - 560px));
+    margin-top: 6px;
+    overflow: hidden;
+    color: #334252;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .project-card,
@@ -204,6 +252,35 @@ p {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+}
+
+.book-card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.book-card-meta div {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    background: #f3f6f8;
+    border-radius: 6px;
+}
+
+.book-card-meta span {
+    color: #6b7684;
+    font-size: 12px;
+}
+
+.book-card-meta strong {
+    color: #17212b;
+    font-size: 15px;
+}
+
+.book-card-footer {
+    justify-content: flex-end;
 }
 
 .card-footer {
@@ -442,5 +519,21 @@ p {
 
     .workbench-panel {
         min-height: 420px;
+    }
+}
+
+@media (max-width: 860px) {
+    .library-page-header {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .library-page-actions {
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .library-page-search {
+        flex: 0 0 170px;
     }
 }
