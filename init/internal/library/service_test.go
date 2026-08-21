@@ -295,6 +295,9 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if session.CurrentChapter.ID != "chapter-000001" {
 		t.Fatalf("默认章节 = %s, want chapter-000001", session.CurrentChapter.ID)
 	}
+	if session.State.Preferences.FontSize != defaultReaderFontSize {
+		t.Fatalf("默认阅读字号 = %d, want %d", session.State.Preferences.FontSize, defaultReaderFontSize)
+	}
 	for _, requiredPath := range []string{
 		filepath.Join(bookPath, "reading", "reading-state.json"),
 		filepath.Join(bookPath, "source-texts", "source-texts.json"),
@@ -324,6 +327,16 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if state.ReadingProgressPercent != 50 {
 		t.Fatalf("阅读进度 = %d, want 50", state.ReadingProgressPercent)
 	}
+	preferenceState, err := SaveReadingPreferences(SaveReadingPreferencesRequest{
+		BookPath: bookPath,
+		FontSize: 22,
+	})
+	if err != nil {
+		t.Fatalf("保存阅读偏好失败: %v", err)
+	}
+	if preferenceState.Preferences.FontSize != 22 {
+		t.Fatalf("阅读字号 = %d, want 22", preferenceState.Preferences.FontSize)
+	}
 	progressIndex := enrichLibraryReadingProgress(LibraryIndex{
 		Version: 1,
 		Books: []LibraryBookEntry{
@@ -339,6 +352,9 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 	if restoredSession.CurrentChapter.ID != "chapter-000002" {
 		t.Fatalf("恢复阅读章节 = %s, want chapter-000002", restoredSession.CurrentChapter.ID)
+	}
+	if restoredSession.State.Preferences.FontSize != 22 {
+		t.Fatalf("恢复阅读字号 = %d, want 22", restoredSession.State.Preferences.FontSize)
 	}
 
 	savedChapter, err := SaveChapterContent(SaveChapterContentRequest{

@@ -17,6 +17,9 @@ const (
 	sourceTextsRelativePath         = "source-texts/source-texts.json"
 	deconstructionCardsRelativePath = "deconstructions/deconstruction-cards.json"
 	deconstructionPlanRelativePath  = "deconstruction-plan.json"
+	defaultReaderFontSize           = 18
+	minReaderFontSize               = 14
+	maxReaderFontSize               = 28
 )
 
 // OpenReadingSession 读取当前书阅读页所需的正式项目数据，并为旧项目补齐缺失文件。
@@ -107,15 +110,41 @@ func SaveReadingPosition(request SaveReadingPositionRequest) (ReadingState, erro
 	if progressPercent == 0 && (position.ChapterOrder > 1 || position.CharOffset > 0) {
 		progressPercent = estimateReadingProgressPercent(project, position)
 	}
+	existingState, err := loadReadingState(bookPath, project)
+	if err != nil {
+		return ReadingState{}, err
+	}
 	state := ReadingState{
 		Version:                1,
 		BookID:                 project.Book.ID,
 		LastPosition:           position,
 		LastMode:               mode,
 		ReadingProgressPercent: progressPercent,
+		Preferences:            normalizeReadingPreferences(existingState.Preferences),
 	}
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(readingStateRelativePath)), state); err != nil {
 		return ReadingState{}, fmt.Errorf("保存阅读位置失败: %w", err)
+	}
+	return state, nil
+}
+
+// SaveReadingPreferences 将单本小说自己的阅读界面偏好保存到项目目录。
+func SaveReadingPreferences(request SaveReadingPreferencesRequest) (ReadingState, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return ReadingState{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureReadingSupportFiles(bookPath, project); err != nil {
+		return ReadingState{}, err
+	}
+	state, err := loadReadingState(bookPath, project)
+	if err != nil {
+		return ReadingState{}, err
+	}
+	state.Preferences = normalizeReadingPreferences(ReadingPreferences{FontSize: request.FontSize})
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(readingStateRelativePath)), state); err != nil {
+		return ReadingState{}, fmt.Errorf("保存阅读偏好失败: %w", err)
 	}
 	return state, nil
 }
@@ -273,6 +302,7 @@ func defaultReadingState(bookID string, chapter BookChapter) ReadingState {
 		Version:                1,
 		BookID:                 bookID,
 		ReadingProgressPercent: 0,
+		Preferences:            ReadingPreferences{FontSize: defaultReaderFontSize},
 		LastPosition: ReadingPosition{
 			ChapterID:          chapter.ID,
 			ChapterOrder:       chapter.Order,
@@ -340,8 +370,11 @@ func loadReadingState(bookPath string, project BookProject) (ReadingState, error
 	if state.LastMode == "" {
 		state.LastMode = "read"
 	}
+	state.Preferences = normalizeReadingPreferences(state.Preferences)
 	if state.LastPosition.ChapterID == "" {
-		return defaultReadingState(project.Book.ID, chooseChapterForPosition(project, "")), nil
+		defaultState := defaultReadingState(project.Book.ID, chooseChapterForPosition(project, ""))
+		defaultState.Preferences = state.Preferences
+		return defaultState, nil
 	}
 	if state.ReadingProgressPercent == 0 && (state.LastPosition.ChapterOrder > 1 || state.LastPosition.CharOffset > 0) {
 		state.ReadingProgressPercent = estimateReadingProgressPercent(project, state.LastPosition)
@@ -349,6 +382,14 @@ func loadReadingState(bookPath string, project BookProject) (ReadingState, error
 		state.ReadingProgressPercent = clampPercent(state.ReadingProgressPercent)
 	}
 	return state, nil
+}
+
+func normalizeReadingPreferences(preferences ReadingPreferences) ReadingPreferences {
+	if preferences.FontSize == 0 {
+		preferences.FontSize = defaultReaderFontSize
+	}
+	preferences.FontSize = clampInt(preferences.FontSize, minReaderFontSize, maxReaderFontSize)
+	return preferences
 }
 
 func estimateReadingProgressPercent(project BookProject, position ReadingPosition) int {
@@ -378,6 +419,16 @@ func clampPercent(value int) int {
 	}
 	if value > 100 {
 		return 100
+	}
+	return value
+}
+
+func clampInt(value int, minValue int, maxValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
 	}
 	return value
 }

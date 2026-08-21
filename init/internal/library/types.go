@@ -106,13 +106,19 @@ type ReadingPosition struct {
 	UpdatedAt          string `json:"updatedAt"`
 }
 
+// ReadingPreferences 保存单本小说自己的阅读界面偏好，随小说项目目录迁移。
+type ReadingPreferences struct {
+	FontSize int `json:"fontSize"`
+}
+
 // ReadingState 是单本小说 reading/reading-state.json 的正式阅读位置数据。
 type ReadingState struct {
-	Version                int             `json:"version"`
-	BookID                 string          `json:"bookId"`
-	LastPosition           ReadingPosition `json:"lastPosition"`
-	LastMode               string          `json:"lastMode"`
-	ReadingProgressPercent int             `json:"readingProgressPercent"`
+	Version                int                `json:"version"`
+	BookID                 string             `json:"bookId"`
+	LastPosition           ReadingPosition    `json:"lastPosition"`
+	LastMode               string             `json:"lastMode"`
+	ReadingProgressPercent int                `json:"readingProgressPercent"`
+	Preferences            ReadingPreferences `json:"preferences"`
 }
 
 // DeconstructionField 定义当前书拆解类型下的一个动态表单字段。
@@ -211,6 +217,12 @@ type SaveReadingPositionRequest struct {
 	RenderedPageNumber     int    `json:"renderedPageNumber"`
 	LastMode               string `json:"lastMode"`
 	ReadingProgressPercent int    `json:"readingProgressPercent"`
+}
+
+// SaveReadingPreferencesRequest 保存当前书独立的阅读界面偏好。
+type SaveReadingPreferencesRequest struct {
+	BookPath string `json:"bookPath"`
+	FontSize int    `json:"fontSize"`
 }
 
 // SaveChapterContentRequest 保存编辑 TAB 中修改后的章节标题和正文。

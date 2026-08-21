@@ -22,6 +22,7 @@ type ImportDraft = booklibrary.ImportDraft
 type ConfirmImportRequest = booklibrary.ConfirmImportRequest
 type ConfirmImportResult = booklibrary.ConfirmImportResult
 type ReadingPosition = booklibrary.ReadingPosition
+type ReadingPreferences = booklibrary.ReadingPreferences
 type ReadingState = booklibrary.ReadingState
 type DeconstructionField = booklibrary.DeconstructionField
 type DeconstructionType = booklibrary.DeconstructionType
@@ -34,6 +35,7 @@ type ReadingSession = booklibrary.ReadingSession
 type ChapterContentRequest = booklibrary.ChapterContentRequest
 type ChapterContentResult = booklibrary.ChapterContentResult
 type SaveReadingPositionRequest = booklibrary.SaveReadingPositionRequest
+type SaveReadingPreferencesRequest = booklibrary.SaveReadingPreferencesRequest
 type SaveChapterContentRequest = booklibrary.SaveChapterContentRequest
 type SourceSelection = booklibrary.SourceSelection
 type CreateDeconstructionRequest = booklibrary.CreateDeconstructionRequest
@@ -203,6 +205,11 @@ func (a *App) GetChapterContent(request ChapterContentRequest) (ChapterContentRe
 // SaveReadingPosition 把翻页和跳章产生的阅读位置写入当前小说项目目录。
 func (a *App) SaveReadingPosition(request SaveReadingPositionRequest) (ReadingState, error) {
 	return booklibrary.SaveReadingPosition(request)
+}
+
+// SaveReadingPreferences 把当前书独立的阅读界面偏好写入小说项目目录。
+func (a *App) SaveReadingPreferences(request SaveReadingPreferencesRequest) (ReadingState, error) {
+	return booklibrary.SaveReadingPreferences(request)
 }
 
 // SaveChapterContent 保存编辑 TAB 中的章节标题和正文。

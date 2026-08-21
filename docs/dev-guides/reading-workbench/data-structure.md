@@ -46,7 +46,10 @@ books/{bookId}/
     "updatedAt": "2026-08-21T10:30:00+08:00"
   },
   "lastMode": "read",
-  "readingProgressPercent": 63
+  "readingProgressPercent": 63,
+  "preferences": {
+    "fontSize": 18
+  }
 }
 ```
 
@@ -65,15 +68,19 @@ books/{bookId}/
 | `updatedAt` | 阅读位置更新时间。 |
 | `lastMode` | 最近使用的工作台模式，第一阶段打开时仍建议默认进入 `read`。 |
 | `readingProgressPercent` | 当前书整体阅读进度百分比，用于书库列表展示；该值应可由 `book.json` 章节字数和 `lastPosition` 重新估算。 |
+| `preferences` | 当前书独立的阅读界面偏好，属于该小说项目目录，不属于全局应用设置。 |
+| `fontSize` | 当前书阅读正文字体大小，单位 px，默认 18。 |
 
 恢复原则：
 
 1. 优先使用 `chapterId + charOffset` 恢复阅读位置。
 2. 如果正文编辑导致 `charOffset` 失效，使用 `paragraphIndex` 辅助定位。
 3. 如果章节不存在，打开最接近的章节；仍失败则打开第一章。
-4. `renderedPageNumber` 受窗口宽度、字号和分页算法影响，只能作为体验参考，不能作为唯一定位依据。
-5. `readingProgressPercent` 是展示摘要，不是恢复阅读位置的唯一依据；旧项目没有该字段时按章节顺序和字符偏移估算。
-6. 阅读位置应在翻页、章节跳转、窗口关闭或应用退出前保存。
+4. 阅读区按整章滚动展示，恢复时根据 `charOffset` 映射到章节滚动位置。
+5. `renderedPageNumber` 是旧分页阅读的兼容字段，滚动阅读不依赖它恢复位置。
+6. `readingProgressPercent` 是展示摘要，不是恢复阅读位置的唯一依据；旧项目没有该字段时按章节顺序和字符偏移估算。
+7. `preferences.fontSize` 随该书项目目录迁移；旧项目没有该字段时使用默认字号并在下次保存时补齐。
+8. 阅读位置应在滚动、章节跳转、窗口关闭或应用退出前保存。
 
 ## 目录分页
 
@@ -185,6 +192,7 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 
 1. 如果旧小说目录没有 `reading/reading-state.json`，打开第一章第一处内容，并在首次保存阅读位置时创建文件。
 2. 如果旧阅读状态没有 `readingProgressPercent`，读取书库或阅读工作台时按 `book.json` 章节字数和 `lastPosition` 估算，不应阻断打开。
-3. 如果旧拆解卡片没有 `sourceTextId`，迁移时应根据旧的书籍、章节、原文位置创建 `SourceText`。
-4. 如果 `source-texts.json` 损坏，应提示用户修复或从拆解卡片中的来源快照重建。
-5. 如果 SQLite 索引损坏，删除缓存后必须能从 `book.json`、章节 TXT、阅读状态、原文片段和拆解 JSON 重建索引。
+3. 如果旧阅读状态没有 `preferences.fontSize`，打开时使用默认字号 18，用户调整或保存阅读状态时写回。
+4. 如果旧拆解卡片没有 `sourceTextId`，迁移时应根据旧的书籍、章节、原文位置创建 `SourceText`。
+5. 如果 `source-texts.json` 损坏，应提示用户修复或从拆解卡片中的来源快照重建。
+6. 如果 SQLite 索引损坏，删除缓存后必须能从 `book.json`、章节 TXT、阅读状态、原文片段和拆解 JSON 重建索引。

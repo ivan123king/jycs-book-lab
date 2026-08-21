@@ -668,12 +668,25 @@ export namespace library {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class ReadingPreferences {
+	    fontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReadingPreferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fontSize = source["fontSize"];
+	    }
+	}
 	export class ReadingState {
 	    version: number;
 	    bookId: string;
 	    lastPosition: ReadingPosition;
 	    lastMode: string;
 	    readingProgressPercent: number;
+	    preferences: ReadingPreferences;
 	
 	    static createFrom(source: any = {}) {
 	        return new ReadingState(source);
@@ -686,6 +699,7 @@ export namespace library {
 	        this.lastPosition = this.convertValues(source["lastPosition"], ReadingPosition);
 	        this.lastMode = source["lastMode"];
 	        this.readingProgressPercent = source["readingProgressPercent"];
+	        this.preferences = this.convertValues(source["preferences"], ReadingPreferences);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -789,6 +803,20 @@ export namespace library {
 	        this.renderedPageNumber = source["renderedPageNumber"];
 	        this.lastMode = source["lastMode"];
 	        this.readingProgressPercent = source["readingProgressPercent"];
+	    }
+	}
+	export class SaveReadingPreferencesRequest {
+	    bookPath: string;
+	    fontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveReadingPreferencesRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.fontSize = source["fontSize"];
 	    }
 	}
 	

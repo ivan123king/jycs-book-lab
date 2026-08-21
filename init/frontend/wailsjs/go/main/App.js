@@ -57,3 +57,7 @@ export function SaveChapterContent(arg1) {
 export function SaveReadingPosition(arg1) {
   return window['go']['main']['App']['SaveReadingPosition'](arg1);
 }
+
+export function SaveReadingPreferences(arg1) {
+  return window['go']['main']['App']['SaveReadingPreferences'](arg1);
+}

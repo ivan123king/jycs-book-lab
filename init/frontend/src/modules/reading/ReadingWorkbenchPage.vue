@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // ReadingWorkbenchPage.vue 负责当前书阅读、正文编辑、选文来源捕获和方案驱动拆解创建。
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   NAlert,
   NButton,
@@ -10,6 +10,7 @@ import {
   NForm,
   NFormItem,
   NInput,
+  NInputNumber,
   NModal,
   NScrollbar,
   NSelect,
@@ -17,13 +18,14 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw, Save } from 'lucide-vue-next'
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw, Save, Type } from 'lucide-vue-next'
 import {
   CreateDeconstructionCard,
   GetChapterContent,
   OpenLastReadingSession,
   OpenReadingSession,
   SaveChapterContent,
+  SaveReadingPreferences,
   SaveReadingPosition,
 } from '@wails/go/main/App'
 import type { library } from '@wails/go/models'
@@ -48,16 +50,16 @@ type CapturedSelection = {
   selectedText: string
 }
 
-const pageSize = 3600
 const catalogPageSize = 30
+const defaultReaderFontSize = 18
 const readerMode = ref<ReaderMode>('read')
 const session = ref<library.ReadingSession | null>(null)
 const currentChapter = ref<library.BookChapter | null>(null)
 const chapterContent = ref('')
-const currentPageStart = ref(0)
+const currentCharOffset = ref(0)
 const loading = ref(false)
-const pageLoading = ref(false)
 const savingPosition = ref(false)
+const savingPreferences = ref(false)
 const readingError = ref('')
 const readingNotice = ref('')
 const catalogOpen = ref(false)
@@ -75,6 +77,11 @@ const editContent = ref('')
 const editSaving = ref(false)
 const editNotice = ref('')
 const editError = ref('')
+const readerFontSize = ref(defaultReaderFontSize)
+const readerScrollRef = ref<HTMLElement | null>(null)
+const readerContentRef = ref<HTMLElement | null>(null)
+const restoringScroll = ref(false)
+const scrollSaveTimer = ref<number | null>(null)
 
 const chapters = computed(() => session.value?.project.chapters ?? [])
 
@@ -82,22 +89,11 @@ const activeBookPath = computed(() => props.project?.book.bookPath ?? session.va
 
 const hasReadingTarget = computed(() => Boolean(activeBookPath.value))
 
-const currentPageContent = computed(() => {
-  if (!chapterContent.value) {
-    return ''
-  }
-  return chapterContent.value.slice(currentPageStart.value, currentPageStart.value + pageSize)
-})
-
-const pageCount = computed(() => Math.max(1, Math.ceil(chapterContent.value.length / pageSize)))
-
-const currentPageNumber = computed(() => Math.floor(currentPageStart.value / pageSize) + 1)
-
 const readingProgressText = computed(() => {
   if (!currentChapter.value) {
     return '未打开章节'
   }
-  return `${currentChapter.value.title} · ${overallReadingPercent.value}% · 第 ${currentPageNumber.value}/${pageCount.value} 页`
+  return `${currentChapter.value.title} · ${overallReadingPercent.value}%`
 })
 
 const overallReadingPercent = computed(() => {
@@ -108,7 +104,7 @@ const overallReadingPercent = computed(() => {
   if (totalWordCount <= 0) {
     return 0
   }
-  const visibleEnd = Math.min(chapterContent.value.length, currentPageStart.value + currentPageContent.value.length)
+  const visibleEnd = Math.min(chapterContent.value.length, currentCharOffset.value)
   const completedWordCount = chapters.value.reduce((sum, chapter) => {
     if (chapter.id === currentChapter.value?.id) {
       return sum + Math.min(Math.max(chapter.wordCount, chapterContent.value.length), visibleEnd)
@@ -171,6 +167,20 @@ const catalogPageChapters = computed(() => {
   return filteredCatalogChapters.value.slice(start, start + catalogPageSize)
 })
 
+const currentChapterIndex = computed(() => {
+  return chapters.value.findIndex((chapter) => chapter.id === currentChapter.value?.id)
+})
+
+const previousChapter = computed(() => {
+  const index = currentChapterIndex.value
+  return index > 0 ? chapters.value[index - 1] : null
+})
+
+const nextChapter = computed(() => {
+  const index = currentChapterIndex.value
+  return index >= 0 && index < chapters.value.length - 1 ? chapters.value[index + 1] : null
+})
+
 const editDirty = computed(() => {
   return currentChapter.value ? editTitle.value !== currentChapter.value.title || editContent.value !== chapterContent.value : false
 })
@@ -198,9 +208,11 @@ async function loadReadingSession() {
     session.value = loaded
     currentChapter.value = loaded.currentChapter
     chapterContent.value = loaded.chapterContent
-    currentPageStart.value = clampPageStart(loaded.state.lastPosition.charOffset)
+    currentCharOffset.value = clampCharOffset(loaded.state.lastPosition.charOffset)
+    readerFontSize.value = normalizeFontSize(loaded.state.preferences?.fontSize)
     selectedPlanTypeId.value = loaded.plan.types[0]?.id ?? ''
     syncEditor()
+    await restoreScrollPosition()
     emitReadingSummary()
     if (!requestedBookPath) {
       emit('projectRestored', loaded.project)
@@ -213,65 +225,27 @@ async function loadReadingSession() {
 }
 
 /**
- * 按章节加载正文并立即保存阅读位置，目录跳转和跨章节翻页共用这条路径。
+ * 按章节加载整章正文并立即保存阅读位置，目录跳转会共用这条路径。
  */
 async function loadChapter(chapterId: string, charOffset = 0) {
   const bookPath = activeBookPath.value
   if (!bookPath) {
     return
   }
-  pageLoading.value = true
   readingError.value = ''
   readingNotice.value = ''
   try {
     const result = await GetChapterContent({ bookPath, chapterId })
     currentChapter.value = result.chapter
     chapterContent.value = result.content
-    currentPageStart.value = clampPageStart(charOffset)
+    currentCharOffset.value = clampCharOffset(charOffset)
     syncEditor()
     clearSelection()
+    await restoreScrollPosition()
     await persistReadingPosition()
     emitReadingSummary()
   } catch (error) {
     readingError.value = getErrorMessage(error)
-  } finally {
-    pageLoading.value = false
-  }
-}
-
-async function goPreviousPage() {
-  if (!currentChapter.value) {
-    return
-  }
-  if (currentPageStart.value > 0) {
-    currentPageStart.value = Math.max(0, currentPageStart.value - pageSize)
-    clearSelection()
-    await persistReadingPosition()
-    emitReadingSummary()
-    return
-  }
-  const index = chapters.value.findIndex((chapter) => chapter.id === currentChapter.value?.id)
-  const previous = chapters.value[index - 1]
-  if (previous) {
-    await loadChapter(previous.id, Number.MAX_SAFE_INTEGER)
-  }
-}
-
-async function goNextPage() {
-  if (!currentChapter.value) {
-    return
-  }
-  if (currentPageStart.value + pageSize < chapterContent.value.length) {
-    currentPageStart.value += pageSize
-    clearSelection()
-    await persistReadingPosition()
-    emitReadingSummary()
-    return
-  }
-  const index = chapters.value.findIndex((chapter) => chapter.id === currentChapter.value?.id)
-  const next = chapters.value[index + 1]
-  if (next) {
-    await loadChapter(next.id, 0)
   }
 }
 
@@ -285,20 +259,50 @@ async function persistReadingPosition() {
     const state = await SaveReadingPosition({
       bookPath,
       chapterId: currentChapter.value.id,
-      charOffset: currentPageStart.value,
-      paragraphIndex: estimateParagraphIndex(chapterContent.value, currentPageStart.value),
-      renderedPageNumber: currentPageNumber.value,
+      charOffset: currentCharOffset.value,
+      paragraphIndex: estimateParagraphIndex(chapterContent.value, currentCharOffset.value),
+      renderedPageNumber: 1,
       lastMode: readerMode.value,
       readingProgressPercent: overallReadingPercent.value,
     })
     if (session.value) {
       session.value.state = state
+      readerFontSize.value = normalizeFontSize(state.preferences?.fontSize)
     }
   } catch (error) {
     readingError.value = getErrorMessage(error)
   } finally {
     savingPosition.value = false
   }
+}
+
+async function persistReadingPreferences() {
+  const bookPath = activeBookPath.value
+  if (!bookPath) {
+    return
+  }
+  savingPreferences.value = true
+  readingError.value = ''
+  try {
+    const state = await SaveReadingPreferences({
+      bookPath,
+      fontSize: readerFontSize.value,
+    })
+    if (session.value) {
+      session.value.state = state
+      readerFontSize.value = normalizeFontSize(state.preferences?.fontSize)
+    }
+  } catch (error) {
+    readingError.value = getErrorMessage(error)
+  } finally {
+    savingPreferences.value = false
+  }
+}
+
+async function updateReaderFontSize(value: number | null) {
+  readerFontSize.value = normalizeFontSize(value ?? defaultReaderFontSize)
+  await restoreScrollPosition()
+  await persistReadingPreferences()
 }
 
 function openCatalog() {
@@ -313,6 +317,20 @@ async function jumpToChapter(chapter: library.BookChapter) {
   await loadChapter(chapter.id, 0)
 }
 
+async function goPreviousChapter() {
+  if (!previousChapter.value) {
+    return
+  }
+  await loadChapter(previousChapter.value.id, 0)
+}
+
+async function goNextChapter() {
+  if (!nextChapter.value) {
+    return
+  }
+  await loadChapter(nextChapter.value.id, 0)
+}
+
 function captureSelection() {
   if (readerMode.value !== 'read' || !currentChapter.value) {
     return
@@ -323,22 +341,15 @@ function captureSelection() {
     clearSelection()
     return
   }
-  const startInPage = currentPageContent.value.indexOf(selectedText)
-  if (startInPage < 0) {
-    selectedSource.value = {
-      chapterId: currentChapter.value.id,
-      chapterOrder: currentChapter.value.order,
-      startOffset: currentPageStart.value,
-      endOffset: currentPageStart.value + selectedText.length,
-      selectedText,
-    }
-    return
-  }
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null
+  const selectionOffset = range ? getSelectionOffsetInReader(range) : null
+  const startOffset = selectionOffset ?? chapterContent.value.indexOf(selectedText)
+  const safeStartOffset = startOffset >= 0 ? startOffset : currentCharOffset.value
   selectedSource.value = {
     chapterId: currentChapter.value.id,
     chapterOrder: currentChapter.value.order,
-    startOffset: currentPageStart.value + startInPage,
-    endOffset: currentPageStart.value + startInPage + selectedText.length,
+    startOffset: safeStartOffset,
+    endOffset: safeStartOffset + selectedText.length,
     selectedText,
   }
 }
@@ -418,9 +429,10 @@ async function saveChapterEdit() {
     })
     currentChapter.value = result.chapter
     chapterContent.value = result.content
-    currentPageStart.value = clampPageStart(currentPageStart.value)
+    currentCharOffset.value = clampCharOffset(currentCharOffset.value)
     updateSessionChapter(result.chapter)
     syncEditor()
+    await restoreScrollPosition()
     await persistReadingPosition()
     editNotice.value = '章节已保存。'
   } catch (error) {
@@ -458,12 +470,73 @@ function clearSelection() {
   window.getSelection()?.removeAllRanges()
 }
 
-function clampPageStart(offset: number) {
-  if (!chapterContent.value) {
+function getSelectionOffsetInReader(range: Range) {
+  const contentElement = readerContentRef.value
+  if (!contentElement || !contentElement.contains(range.commonAncestorContainer)) {
+    return null
+  }
+  const prefixRange = range.cloneRange()
+  prefixRange.selectNodeContents(contentElement)
+  prefixRange.setEnd(range.startContainer, range.startOffset)
+  return prefixRange.toString().length
+}
+
+function handleReaderScroll() {
+  if (restoringScroll.value) {
+    return
+  }
+  currentCharOffset.value = estimateCharOffsetFromScroll()
+  emitReadingSummary()
+  schedulePersistReadingPosition()
+}
+
+function estimateCharOffsetFromScroll() {
+  const scrollElement = readerScrollRef.value
+  if (!scrollElement || chapterContent.value.length === 0) {
     return 0
   }
-  const maxStart = Math.max(0, Math.floor((chapterContent.value.length - 1) / pageSize) * pageSize)
-  return Math.min(Math.max(0, Math.floor(offset / pageSize) * pageSize), maxStart)
+  const maxScrollTop = Math.max(1, scrollElement.scrollHeight - scrollElement.clientHeight)
+  const scrollRatio = scrollElement.scrollTop / maxScrollTop
+  return clampCharOffset(Math.round(chapterContent.value.length * scrollRatio))
+}
+
+function schedulePersistReadingPosition() {
+  if (scrollSaveTimer.value !== null) {
+    window.clearTimeout(scrollSaveTimer.value)
+  }
+  scrollSaveTimer.value = window.setTimeout(() => {
+    scrollSaveTimer.value = null
+    void persistReadingPosition()
+  }, 500)
+}
+
+async function restoreScrollPosition() {
+  await nextTick()
+  const scrollElement = readerScrollRef.value
+  if (!scrollElement) {
+    return
+  }
+  restoringScroll.value = true
+  const maxScrollTop = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight)
+  const ratio = chapterContent.value.length > 0 ? currentCharOffset.value / chapterContent.value.length : 0
+  scrollElement.scrollTop = maxScrollTop * ratio
+  window.setTimeout(() => {
+    restoringScroll.value = false
+  }, 0)
+}
+
+function clampCharOffset(offset: number) {
+  if (!Number.isFinite(offset) || offset < 0) {
+    return 0
+  }
+  return Math.min(Math.round(offset), chapterContent.value.length)
+}
+
+function normalizeFontSize(value?: number) {
+  if (!Number.isFinite(value)) {
+    return defaultReaderFontSize
+  }
+  return Math.min(28, Math.max(14, Math.round(value ?? defaultReaderFontSize)))
 }
 
 function estimateParagraphIndex(content: string, offset: number) {
@@ -511,6 +584,14 @@ watch(catalogSearch, () => {
 })
 
 onMounted(loadReadingSession)
+
+onBeforeUnmount(() => {
+  if (scrollSaveTimer.value !== null) {
+    window.clearTimeout(scrollSaveTimer.value)
+    scrollSaveTimer.value = null
+  }
+  void persistReadingPosition()
+})
 </script>
 
 <template>
@@ -535,6 +616,18 @@ onMounted(loadReadingSession)
             <span class="reader-save-state">{{ savingPosition ? '保存阅读位置中' : '阅读位置已本地保存' }}</span>
           </n-space>
           <n-space>
+            <div class="reader-font-control">
+              <Type :size="16" />
+              <n-input-number
+                v-model:value="readerFontSize"
+                size="small"
+                :min="14"
+                :max="28"
+                :step="1"
+                :show-button="true"
+                @update:value="updateReaderFontSize"
+              />
+            </div>
             <n-button quaternary @click="openCatalog">
               <template #icon>
                 <List :size="16" />
@@ -553,16 +646,18 @@ onMounted(loadReadingSession)
 
         <template v-if="readerMode === 'read'">
           <div class="reader-layout">
-            <button class="reader-page-button" :disabled="pageLoading" @click="goPreviousPage">
-              <ChevronLeft :size="26" />
-              <span>上一页</span>
-            </button>
-
-            <article class="novel-text" @mouseup="captureSelection" @keyup="captureSelection">
-              <div v-if="!currentPageContent" class="reader-placeholder">
+            <article
+              ref="readerScrollRef"
+              class="novel-text"
+              :style="{ fontSize: `${readerFontSize}px` }"
+              @scroll="handleReaderScroll"
+              @mouseup="captureSelection"
+              @keyup="captureSelection"
+            >
+              <div v-if="!chapterContent" class="reader-placeholder">
                 当前章节没有正文，可切换到编辑 TAB 补充内容。
               </div>
-              <div v-else class="reader-content-text">{{ currentPageContent }}</div>
+              <div v-else ref="readerContentRef" class="reader-content-text">{{ chapterContent }}</div>
 
               <div v-if="selectedSource" class="floating-toolbar">
                 <n-button size="small" type="primary" @click="openDeconstructionDialog">
@@ -579,17 +674,26 @@ onMounted(loadReadingSession)
                 </n-button>
               </div>
             </article>
-
-            <button class="reader-page-button" :disabled="pageLoading" @click="goNextPage">
-              <ChevronRight :size="26" />
-              <span>下一页</span>
-            </button>
           </div>
 
           <div class="reader-statusbar">
-            <span>{{ currentChapter?.title ?? '未打开章节' }}</span>
-            <span>页内位置 {{ currentPageStart + 1 }} / {{ Math.max(chapterContent.length, 1) }}</span>
-            <span v-if="selectedSource">已选 {{ selectedSource.selectedText.length }} 字</span>
+            <n-button size="small" :disabled="!previousChapter" @click="goPreviousChapter">
+              <template #icon>
+                <ChevronLeft :size="15" />
+              </template>
+              上一章
+            </n-button>
+            <div class="reader-status-summary">
+              <span>{{ currentChapter?.title ?? '未打开章节' }}</span>
+              <span>阅读位置 {{ currentCharOffset + 1 }} / {{ Math.max(chapterContent.length, 1) }}</span>
+              <span v-if="selectedSource">已选 {{ selectedSource.selectedText.length }} 字</span>
+            </div>
+            <n-button size="small" type="primary" secondary :disabled="!nextChapter" @click="goNextChapter">
+              下一章
+              <template #icon>
+                <ChevronRight :size="15" />
+              </template>
+            </n-button>
           </div>
         </template>
 

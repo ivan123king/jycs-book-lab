@@ -29,3 +29,5 @@ export function RemoveBookFromLibrary(arg1:string):Promise<library.LibraryState>
 export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
 
 export function SaveReadingPosition(arg1:library.SaveReadingPositionRequest):Promise<library.ReadingState>;
+
+export function SaveReadingPreferences(arg1:library.SaveReadingPreferencesRequest):Promise<library.ReadingState>;
