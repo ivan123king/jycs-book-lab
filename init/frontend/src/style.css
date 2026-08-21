@@ -1,26 +1,446 @@
-html {
-    background-color: rgba(27, 38, 54, 1);
-    text-align: center;
-    color: white;
+/* style.css 定义佳依拆书页面原型的全局视觉、应用壳层和主要功能模块布局。 */
+:root {
+    font-family: Inter, "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    color: #1f2933;
+    background: #eef1f4;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+    width: 100%;
+    height: 100%;
+    margin: 0;
 }
 
 body {
+    overflow: hidden;
+}
+
+button,
+input,
+textarea {
+    font: inherit;
+}
+
+h1,
+h2,
+p {
     margin: 0;
-    color: white;
-    font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
 }
 
-@font-face {
-    font-family: "Nunito";
-    font-style: normal;
-    font-weight: 400;
-    src: local(""),
-    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
-}
-
-#app {
+.app-shell {
     height: 100vh;
-    text-align: center;
+    background: #eef1f4;
+}
+
+.sidebar {
+    background: #fbfcfd;
+}
+
+.brand-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 18px 18px;
+}
+
+.brand-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    color: #fff;
+    background: linear-gradient(135deg, #2f6f6d, #4258a6);
+    border-radius: 8px;
+    place-items: center;
+}
+
+.brand-title {
+    color: #17212b;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.brand-subtitle,
+.page-context,
+.muted,
+.panel-subtitle,
+.project-path,
+.storage-text {
+    color: #6b7684;
+    font-size: 12px;
+}
+
+.sidebar-footer {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+}
+
+.storage-alert {
+    border-radius: 8px;
+}
+
+.storage-title {
+    margin-bottom: 4px;
+    color: #24313d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    padding: 0 24px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+}
+
+.page-title {
+    color: #18222d;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.topbar-actions,
+.section-heading,
+.reader-toolbar,
+.item-card-head,
+.panel-title-row,
+.card-footer,
+.library-toolbar,
+.chapter-page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.content-shell {
+    height: calc(100vh - 68px);
+    background: #eef1f4;
+}
+
+.content-scroll {
+    height: calc(100vh - 68px);
+}
+
+.page-section {
+    min-height: calc(100vh - 68px);
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.section-heading {
+    margin-bottom: 18px;
+}
+
+.section-heading h1 {
+    color: #15202b;
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.section-heading p {
+    margin-top: 6px;
+    color: #647180;
+    font-size: 13px;
+}
+
+.project-card,
+.workspace-card,
+.item-card,
+.material-card,
+.detail-panel,
+.dimension-card,
+.fields-card,
+.settings-grid .n-card,
+.analysis-grid .n-card,
+.page-section > .n-grid .n-card {
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(31, 45, 61, 0.08);
+}
+
+.card-kicker {
+    color: #2f6f6d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.project-card h2,
+.item-card h2,
+.material-card h2 {
+    margin: 6px 0 6px;
+    color: #17212b;
+    font-size: 17px;
+}
+
+.project-path {
+    min-height: 32px;
+    margin-top: 12px;
+    padding: 8px;
+    overflow: hidden;
+    background: #f3f6f8;
+    border-radius: 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.library-path {
+    margin-top: 4px;
+    color: #17212b;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.metric-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.card-footer {
+    margin-top: 14px;
+    color: #758190;
+    font-size: 12px;
+}
+
+.page-alert {
+    margin-top: 16px;
+    border-radius: 8px;
+}
+
+.card-actions {
+    margin-top: 16px;
+}
+
+.import-grid,
+.import-review-layout,
+.list-detail-layout,
+.plan-layout,
+.settings-grid,
+.analysis-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 16px;
+}
+
+.import-review-layout {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    margin-bottom: 16px;
+}
+
+.chapter-table-card {
+    margin-top: 0;
+}
+
+.chapter-page-footer {
+    margin-top: 16px;
+    color: #647180;
+    font-size: 13px;
+}
+
+.reading-page {
+    display: grid;
+    grid-template-columns: 230px minmax(480px, 1fr) 360px;
+    gap: 16px;
+    height: calc(100vh - 68px);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.chapter-panel,
+.reader-pane,
+.workbench-panel {
+    min-height: 0;
+    background: #fff;
+    border: 1px solid #dfe5ea;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(31, 45, 61, 0.07);
+}
+
+.chapter-panel,
+.workbench-panel {
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.panel-title {
+    margin-bottom: 12px;
+    color: #17212b;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.chapter-item {
+    display: grid;
+    width: 100%;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 11px 10px;
+    color: #23313f;
+    text-align: left;
+    cursor: pointer;
+    background: #f6f8fa;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.chapter-item.active {
+    background: #edf7f4;
+    border-color: #75b8a8;
+}
+
+.chapter-item span {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chapter-item small {
+    color: #71808d;
+}
+
+.reader-pane {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.reader-toolbar {
+    height: 54px;
+    padding: 0 18px;
+    border-bottom: 1px solid #e3e8ee;
+}
+
+.novel-text {
+    position: relative;
+    flex: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 44px 48px 80px;
+    overflow-y: auto;
+    color: #24313d;
+    font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
+    font-size: 18px;
+    line-height: 2.05;
+    text-align: left;
+}
+
+.novel-text p + p {
+    margin-top: 22px;
+}
+
+.edit-pane {
+    flex: 1;
+    padding: 28px 36px 40px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.edit-title-input {
+    max-width: 420px;
+}
+
+.selected-source {
+    padding: 3px 5px;
+    background: #fff0b8;
+    border-radius: 4px;
+    box-decoration-break: clone;
+}
+
+.floating-toolbar {
+    position: absolute;
+    top: 172px;
+    left: 50%;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    background: #17212b;
+    border-radius: 8px;
+    box-shadow: 0 16px 32px rgba(23, 33, 43, 0.25);
+    transform: translateX(-50%);
+}
+
+.workbench-panel {
+    overflow-y: auto;
+}
+
+.source-box {
+    margin-bottom: 14px;
+    border-radius: 8px;
+}
+
+.stack-list {
+    display: grid;
+    gap: 14px;
+}
+
+.item-card p,
+.material-card p {
+    margin: 10px 0;
+    color: #40505e;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.source-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0;
+    color: #677586;
+    font-size: 12px;
+}
+
+.detail-panel {
+    align-self: start;
+}
+
+.progress-row {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.progress-row > div,
+.chapter-stat-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.chapter-stat-row {
+    grid-template-columns: 150px 1fr 36px;
+    margin-bottom: 14px;
+    color: #334252;
+    font-size: 13px;
+}
+
+@media (max-width: 1180px) {
+    .reading-page,
+    .import-grid,
+    .import-review-layout,
+    .list-detail-layout,
+    .plan-layout,
+    .settings-grid,
+    .analysis-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .workbench-panel {
+        min-height: 420px;
+    }
 }

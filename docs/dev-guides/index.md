@@ -9,6 +9,8 @@
 3. 根据任务选择模块文档：
    - 工程创建、初始化、首次运行：`docs/dev-guides/project-initialization.md`
    - 页面、交互、组件：`docs/dev-guides/frontend-pages.md`
+   - 页面设计、页面结构、功能模块拆分：`docs/dev-guides/page-design/overall-page-structure.md`
+   - 书库、小说导入、书库数据结构：`docs/dev-guides/book-library/design-principles.md`、`docs/dev-guides/book-library/data-structure.md`、`docs/dev-guides/book-library/page-structure.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
    - 注释、文件组织、协作规则：`docs/dev-guides/coding-rules.md`
@@ -34,6 +36,10 @@
 | `docs/dev-guides/project-initialization.md` | 工程创建指南，说明如何在仓库根目录下创建 `init/` Wails + Vue 3 工程并完成首次运行和构建验证。 | 首次创建工程、复现初始化流程、检查初始化命令和本地开发环境任务。 |
 | `docs/dev-guides/tech-stack.md` | 技术选型与本地 PC 产品约束。 | 技术架构、依赖选择、本地存储、进程边界相关任务。 |
 | `docs/dev-guides/frontend-pages.md` | 页面模块、交互和组件开发指南。 | 书库、导入、阅读、拆解、素材、分析等前端页面任务。 |
+| `docs/dev-guides/page-design/overall-page-structure.md` | 页面整体结构与模块拆分文档，说明页面导航层级、模块职责、复用组件和第一阶段页面推进顺序。 | 页面设计评审、页面功能拆分、前端编码前的结构确认任务。 |
+| `docs/dev-guides/book-library/design-principles.md` | 书库模块设计原则，说明书库目的、入库规则和边界。 | 书库、小说导入、书库目录设计相关任务。 |
+| `docs/dev-guides/book-library/data-structure.md` | 书库数据结构，说明 `index.json`、单本小说 `book.json` 和入库目录结构。 | 书库索引、小说导入、章节识别结果保存相关任务。 |
+| `docs/dev-guides/book-library/page-structure.md` | 书库页面结构，说明书库页和书库内导入面板的布局、流程和页面状态。 | 书库页、书库内导入面板、章节分页标题展示相关任务。 |
 | `docs/dev-guides/backend-local-data.md` | 本地后端、数据模型、存储和业务服务指南。 | 文件导入、章节识别、数据库、搜索、标签、素材、来源追溯相关任务。 |
 | `docs/dev-guides/coding-rules.md` | 编码、注释、命名和协作规则。 | 新增文件、模块、函数、复杂业务逻辑、数据结构变更任务。 |
 
