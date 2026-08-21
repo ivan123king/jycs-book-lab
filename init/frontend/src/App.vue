@@ -27,6 +27,7 @@ import { formatDateTime } from '@/utils/format'
 const activeView = ref<ViewKey>('library')
 const libraryMode = ref<'list' | 'import'>('list')
 const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
+const currentProject = ref<BookProject | null>(null)
 
 const activeTitle = computed(() => {
   const titles: Record<ViewKey, string> = {
@@ -49,6 +50,7 @@ function goTo(view: ViewKey) {
  * 用打开的小说项目刷新壳层摘要；章节正文和拆解数据仍由具体页面按项目目录加载。
  */
 function applyCurrentBook(project: BookProject) {
+  currentProject.value = project
   currentBook.value = {
     title: project.book.name,
     author: '未知作者',
@@ -61,6 +63,13 @@ function applyCurrentBook(project: BookProject) {
     readingPosition: project.chapters[0]?.title ? `${project.chapters[0].title} · 0%` : '尚未开始阅读',
   }
   activeView.value = 'reading'
+}
+
+function updateReadingPosition(summary: string) {
+  currentBook.value = {
+    ...currentBook.value,
+    readingPosition: summary,
+  }
 }
 </script>
 
@@ -86,7 +95,8 @@ function applyCurrentBook(project: BookProject) {
               />
               <ReadingWorkbenchPage
                 v-else-if="activeView === 'reading'"
-                :chapters="demoChapters"
+                :project="currentProject"
+                @reading-updated="updateReadingPosition"
               />
               <DeconstructionCardsPage
                 v-else-if="activeView === 'deconstructions'"

@@ -6,12 +6,22 @@ export function ChooseLibraryDirectory():Promise<library.LibraryState>;
 
 export function ConfirmNovelImport(arg1:library.ConfirmImportRequest):Promise<library.ConfirmImportResult>;
 
+export function CreateDeconstructionCard(arg1:library.CreateDeconstructionRequest):Promise<library.CreateDeconstructionResult>;
+
+export function GetChapterContent(arg1:library.ChapterContentRequest):Promise<library.ChapterContentResult>;
+
 export function GetLibraryState():Promise<library.LibraryState>;
 
 export function Greet(arg1:string):Promise<string>;
 
 export function OpenBookProject(arg1:string):Promise<library.BookProject>;
 
+export function OpenReadingSession(arg1:string):Promise<library.ReadingSession>;
+
 export function PreviewNovelImport():Promise<library.ImportDraft>;
 
 export function ReDetectNovelImport(arg1:string):Promise<library.ImportDraft>;
+
+export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
+
+export function SaveReadingPosition(arg1:library.SaveReadingPositionRequest):Promise<library.ReadingState>;

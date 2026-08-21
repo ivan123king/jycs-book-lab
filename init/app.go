@@ -21,6 +21,23 @@ type ImportChapterPreview = booklibrary.ImportChapterPreview
 type ImportDraft = booklibrary.ImportDraft
 type ConfirmImportRequest = booklibrary.ConfirmImportRequest
 type ConfirmImportResult = booklibrary.ConfirmImportResult
+type ReadingPosition = booklibrary.ReadingPosition
+type ReadingState = booklibrary.ReadingState
+type DeconstructionField = booklibrary.DeconstructionField
+type DeconstructionType = booklibrary.DeconstructionType
+type DeconstructionPlan = booklibrary.DeconstructionPlan
+type SourceText = booklibrary.SourceText
+type SourceTextCollection = booklibrary.SourceTextCollection
+type DeconstructionCard = booklibrary.DeconstructionCard
+type DeconstructionCardCollection = booklibrary.DeconstructionCardCollection
+type ReadingSession = booklibrary.ReadingSession
+type ChapterContentRequest = booklibrary.ChapterContentRequest
+type ChapterContentResult = booklibrary.ChapterContentResult
+type SaveReadingPositionRequest = booklibrary.SaveReadingPositionRequest
+type SaveChapterContentRequest = booklibrary.SaveChapterContentRequest
+type SourceSelection = booklibrary.SourceSelection
+type CreateDeconstructionRequest = booklibrary.CreateDeconstructionRequest
+type CreateDeconstructionResult = booklibrary.CreateDeconstructionResult
 
 // App struct
 type App struct {
@@ -126,4 +143,29 @@ func (a *App) ConfirmNovelImport(request ConfirmImportRequest) (ConfirmImportRes
 // OpenBookProject 读取单本小说目录中的 book.json，作为进入当前书工作区的入口。
 func (a *App) OpenBookProject(bookPath string) (BookProject, error) {
 	return booklibrary.OpenBookProject(bookPath)
+}
+
+// OpenReadingSession 打开阅读工作台，并从单本小说目录恢复阅读位置和当前章节正文。
+func (a *App) OpenReadingSession(bookPath string) (ReadingSession, error) {
+	return booklibrary.OpenReadingSession(bookPath)
+}
+
+// GetChapterContent 按章节 ID 读取用户修正后的章节正文 TXT。
+func (a *App) GetChapterContent(request ChapterContentRequest) (ChapterContentResult, error) {
+	return booklibrary.GetChapterContent(request)
+}
+
+// SaveReadingPosition 把翻页和跳章产生的阅读位置写入当前小说项目目录。
+func (a *App) SaveReadingPosition(request SaveReadingPositionRequest) (ReadingState, error) {
+	return booklibrary.SaveReadingPosition(request)
+}
+
+// SaveChapterContent 保存编辑 TAB 中的章节标题和正文。
+func (a *App) SaveChapterContent(request SaveChapterContentRequest) (ChapterContentResult, error) {
+	return booklibrary.SaveChapterContent(request)
+}
+
+// CreateDeconstructionCard 从当前选文创建拆解卡片，并保留来源追溯。
+func (a *App) CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDeconstructionResult, error) {
+	return booklibrary.CreateDeconstructionCard(request)
 }

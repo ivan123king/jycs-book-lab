@@ -10,6 +10,8 @@ import (
 
 var chapterTitlePattern = regexp.MustCompile(`(?i)^\s*((第[零〇一二三四五六七八九十百千万两0-9]{1,12}\s*[章节回卷部集][^\r\n]{0,80})|(卷[零〇一二三四五六七八九十百千万两0-9]{1,12}[^\r\n]{0,80})|(chapter\s+[0-9ivxlcdm]+[^\r\n]{0,80}))\s*$`)
 
+const unknownChapterTitle = "未知标题"
+
 type chapterMarker struct {
 	title          string
 	titleByteStart int
@@ -25,7 +27,7 @@ func DetectChapters(text string) []BookChapter {
 		return []BookChapter{
 			{
 				ID:          "chapter-000001",
-				Title:       "正文",
+				Title:       unknownChapterTitle,
 				Order:       1,
 				ContentPath: "chapters/chapter-000001.txt",
 				StartOffset: 0,
@@ -35,7 +37,22 @@ func DetectChapters(text string) []BookChapter {
 		}
 	}
 
-	chapters := make([]BookChapter, 0, len(markers))
+	chapters := make([]BookChapter, 0, len(markers)+1)
+	order := 1
+	if markers[0].titleByteStart > 0 && hasReadableText(text[:markers[0].titleByteStart]) {
+		chapterID := fmt.Sprintf("chapter-%06d", order)
+		chapters = append(chapters, BookChapter{
+			ID:          chapterID,
+			Title:       unknownChapterTitle,
+			Order:       order,
+			ContentPath: fmt.Sprintf("chapters/%s.txt", chapterID),
+			StartOffset: 0,
+			EndOffset:   markers[0].titleByteStart,
+			WordCount:   countTextRunes(text[:markers[0].titleByteStart]),
+		})
+		order++
+	}
+
 	for index, marker := range markers {
 		endOffset := len(text)
 		if index+1 < len(markers) {
@@ -47,16 +64,17 @@ func DetectChapters(text string) []BookChapter {
 			bodyStart = marker.titleByteEnd
 		}
 
-		chapterID := fmt.Sprintf("chapter-%06d", index+1)
+		chapterID := fmt.Sprintf("chapter-%06d", order)
 		chapters = append(chapters, BookChapter{
 			ID:          chapterID,
 			Title:       marker.title,
-			Order:       index + 1,
+			Order:       order,
 			ContentPath: fmt.Sprintf("chapters/%s.txt", chapterID),
 			StartOffset: marker.titleByteStart,
 			EndOffset:   endOffset,
 			WordCount:   countTextRunes(text[bodyStart:endOffset]),
 		})
+		order++
 	}
 
 	return chapters
@@ -101,4 +119,8 @@ func countTextRunes(text string) int {
 
 func isIgnoredTextRune(r rune) bool {
 	return r == '\r' || r == '\n' || r == '\t' || r == ' ' || r == '\u3000'
+}
+
+func hasReadableText(text string) bool {
+	return countTextRunes(text) > 0
 }

@@ -10,6 +10,14 @@ export function ConfirmNovelImport(arg1) {
   return window['go']['main']['App']['ConfirmNovelImport'](arg1);
 }
 
+export function CreateDeconstructionCard(arg1) {
+  return window['go']['main']['App']['CreateDeconstructionCard'](arg1);
+}
+
+export function GetChapterContent(arg1) {
+  return window['go']['main']['App']['GetChapterContent'](arg1);
+}
+
 export function GetLibraryState() {
   return window['go']['main']['App']['GetLibraryState']();
 }
@@ -22,10 +30,22 @@ export function OpenBookProject(arg1) {
   return window['go']['main']['App']['OpenBookProject'](arg1);
 }
 
+export function OpenReadingSession(arg1) {
+  return window['go']['main']['App']['OpenReadingSession'](arg1);
+}
+
 export function PreviewNovelImport() {
   return window['go']['main']['App']['PreviewNovelImport']();
 }
 
 export function ReDetectNovelImport(arg1) {
   return window['go']['main']['App']['ReDetectNovelImport'](arg1);
+}
+
+export function SaveChapterContent(arg1) {
+  return window['go']['main']['App']['SaveChapterContent'](arg1);
+}
+
+export function SaveReadingPosition(arg1) {
+  return window['go']['main']['App']['SaveReadingPosition'](arg1);
 }
