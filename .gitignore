@@ -3,6 +3,13 @@ node_modules
 dist
 out
 
+# Wails / Vue 工程生成产物
+init/build/bin/
+init/frontend/dist/
+init/frontend/node_modules/
+init/frontend/package.json.md5
+init/*.syso
+
 # local env files
 .env.local
 .env.*.local

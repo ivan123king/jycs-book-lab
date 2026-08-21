@@ -7,6 +7,7 @@
 1. 先读：`docs/ai-guides/product-brief.md`
 2. 再读：本文
 3. 根据任务选择模块文档：
+   - 工程创建、初始化、首次运行：`docs/dev-guides/project-initialization.md`
    - 页面、交互、组件：`docs/dev-guides/frontend-pages.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
@@ -30,6 +31,7 @@
 | --- | --- | --- |
 | `docs/ai-guides/product-brief.md` | AI 产品简述，说明产品定位、核心对象、产品原则和 MVP 边界。 | 所有产品理解、功能设计、开发任务。 |
 | `docs/dev-guides/index.md` | 开发指南总索引，说明阅读顺序、模块边界和检查清单。 | 所有代码修改和文档修改任务。 |
+| `docs/dev-guides/project-initialization.md` | 工程创建指南，说明如何在仓库根目录下创建 `init/` Wails + Vue 3 工程并完成首次运行和构建验证。 | 首次创建工程、复现初始化流程、检查初始化命令和本地开发环境任务。 |
 | `docs/dev-guides/tech-stack.md` | 技术选型与本地 PC 产品约束。 | 技术架构、依赖选择、本地存储、进程边界相关任务。 |
 | `docs/dev-guides/frontend-pages.md` | 页面模块、交互和组件开发指南。 | 书库、导入、阅读、拆解、素材、分析等前端页面任务。 |
 | `docs/dev-guides/backend-local-data.md` | 本地后端、数据模型、存储和业务服务指南。 | 文件导入、章节识别、数据库、搜索、标签、素材、来源追溯相关任务。 |
