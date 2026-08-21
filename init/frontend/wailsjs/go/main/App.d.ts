@@ -31,3 +31,5 @@ export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promi
 export function SaveReadingPosition(arg1:library.SaveReadingPositionRequest):Promise<library.ReadingState>;
 
 export function SaveReadingPreferences(arg1:library.SaveReadingPreferencesRequest):Promise<library.ReadingState>;
+
+export function SplitChapterFromStart(arg1:library.SplitChapterRequest):Promise<library.SplitChapterResult>;

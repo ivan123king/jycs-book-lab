@@ -37,6 +37,8 @@ type ChapterContentResult = booklibrary.ChapterContentResult
 type SaveReadingPositionRequest = booklibrary.SaveReadingPositionRequest
 type SaveReadingPreferencesRequest = booklibrary.SaveReadingPreferencesRequest
 type SaveChapterContentRequest = booklibrary.SaveChapterContentRequest
+type SplitChapterRequest = booklibrary.SplitChapterRequest
+type SplitChapterResult = booklibrary.SplitChapterResult
 type SourceSelection = booklibrary.SourceSelection
 type CreateDeconstructionRequest = booklibrary.CreateDeconstructionRequest
 type CreateDeconstructionResult = booklibrary.CreateDeconstructionResult
@@ -215,6 +217,11 @@ func (a *App) SaveReadingPreferences(request SaveReadingPreferencesRequest) (Rea
 // SaveChapterContent 保存编辑 TAB 中的章节标题和正文。
 func (a *App) SaveChapterContent(request SaveChapterContentRequest) (ChapterContentResult, error) {
 	return booklibrary.SaveChapterContent(request)
+}
+
+// SplitChapterFromStart 从目录中的当前章节开头拆出新章节，并保存更新后的章节目录。
+func (a *App) SplitChapterFromStart(request SplitChapterRequest) (SplitChapterResult, error) {
+	return booklibrary.SplitChapterFromStart(request)
 }
 
 // CreateDeconstructionCard 从当前选文创建拆解卡片，并保留来源追溯。

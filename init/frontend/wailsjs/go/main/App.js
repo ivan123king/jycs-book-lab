@@ -61,3 +61,7 @@ export function SaveReadingPosition(arg1) {
 export function SaveReadingPreferences(arg1) {
   return window['go']['main']['App']['SaveReadingPreferences'](arg1);
 }
+
+export function SplitChapterFromStart(arg1) {
+  return window['go']['main']['App']['SplitChapterFromStart'](arg1);
+}

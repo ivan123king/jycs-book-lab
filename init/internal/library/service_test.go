@@ -4,6 +4,7 @@ package library
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -400,5 +401,142 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
 		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
+	}
+}
+
+// TestSplitChapterFromStartSupportsRepeatedUnknownChapterSplit 覆盖未知章节按顺序拆成多个章节的目录修正流程。
+func TestSplitChapterFromStartSupportsRepeatedUnknownChapterSplit(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "未知章节小说.txt")
+	sourceText := "A 段正文。\n\nB 段正文。\n\nC 段正文。"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-split-001",
+		SourcePath: sourcePath,
+		BookName:   "未知章节小说",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+	if len(result.Project.Chapters) != 1 {
+		t.Fatalf("初始章节数 = %d, want 1", len(result.Project.Chapters))
+	}
+	bookPath := result.Project.Book.BookPath
+	unknownChapterID := result.Project.Chapters[0].ID
+
+	firstSplit, err := SplitChapterFromStart(SplitChapterRequest{
+		BookPath:         bookPath,
+		ChapterID:        unknownChapterID,
+		NewTitle:         "第一章 A",
+		NewContent:       "A 段正文。\n\n",
+		RemainingContent: "B 段正文。\n\nC 段正文。",
+	})
+	if err != nil {
+		t.Fatalf("第一次拆分失败: %v", err)
+	}
+	if len(firstSplit.Project.Chapters) != 2 {
+		t.Fatalf("第一次拆分后章节数 = %d, want 2", len(firstSplit.Project.Chapters))
+	}
+	if firstSplit.Project.Chapters[0].Title != "第一章 A" || firstSplit.Project.Chapters[0].Order != 1 {
+		t.Fatalf("新章节 A 不正确: %+v", firstSplit.Project.Chapters[0])
+	}
+	if firstSplit.Project.Chapters[1].ID != unknownChapterID || firstSplit.Project.Chapters[1].Order != 2 {
+		t.Fatalf("剩余未知章节不正确: %+v", firstSplit.Project.Chapters[1])
+	}
+
+	secondSplit, err := SplitChapterFromStart(SplitChapterRequest{
+		BookPath:         bookPath,
+		ChapterID:        unknownChapterID,
+		NewTitle:         "第二章 B",
+		NewContent:       "B 段正文。\n\n",
+		RemainingContent: "C 段正文。",
+	})
+	if err != nil {
+		t.Fatalf("第二次拆分失败: %v", err)
+	}
+	if len(secondSplit.Project.Chapters) != 3 {
+		t.Fatalf("第二次拆分后章节数 = %d, want 3", len(secondSplit.Project.Chapters))
+	}
+	if secondSplit.Project.Chapters[0].Title != "第一章 A" || secondSplit.Project.Chapters[0].Order != 1 {
+		t.Fatalf("章节 A 顺序不正确: %+v", secondSplit.Project.Chapters[0])
+	}
+	if secondSplit.Project.Chapters[1].Title != "第二章 B" || secondSplit.Project.Chapters[1].Order != 2 {
+		t.Fatalf("章节 B 顺序不正确: %+v", secondSplit.Project.Chapters[1])
+	}
+	if secondSplit.Project.Chapters[2].ID != unknownChapterID || secondSplit.Project.Chapters[2].Order != 3 {
+		t.Fatalf("剩余章节 C 顺序不正确: %+v", secondSplit.Project.Chapters[2])
+	}
+
+	reopened, err := OpenBookProject(bookPath)
+	if err != nil {
+		t.Fatalf("重新打开拆分后项目失败: %v", err)
+	}
+	if reopened.Chapters[0].Title != "第一章 A" || reopened.Chapters[1].Title != "第二章 B" || reopened.Chapters[2].ID != unknownChapterID {
+		t.Fatalf("落盘章节顺序不正确: %+v", reopened.Chapters)
+	}
+	remainingContent, err := os.ReadFile(filepath.Join(bookPath, filepath.FromSlash(reopened.Chapters[2].ContentPath)))
+	if err != nil {
+		t.Fatalf("读取剩余章节正文失败: %v", err)
+	}
+	if string(remainingContent) != "C 段正文。" {
+		t.Fatalf("剩余章节正文 = %q, want C 段正文。", string(remainingContent))
+	}
+}
+
+// TestSplitChapterFromStartRejectsChapterWithSourceTexts 确保章节已有选文来源时不会静默破坏拆解追溯。
+func TestSplitChapterFromStartRejectsChapterWithSourceTexts(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "已有拆解小说.txt")
+	sourceText := "第一章 雨夜\nA 段正文。\n\nB 段正文。"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-split-source-001",
+		SourcePath: sourcePath,
+		BookName:   "已有拆解小说",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+	bookPath := result.Project.Book.BookPath
+	chapterID := result.Project.Chapters[0].ID
+
+	if _, err := OpenReadingSession(bookPath); err != nil {
+		t.Fatalf("打开阅读会话失败: %v", err)
+	}
+	if _, err := CreateDeconstructionCard(CreateDeconstructionRequest{
+		BookPath: bookPath,
+		Selection: SourceSelection{
+			ChapterID:    chapterID,
+			ChapterOrder: 1,
+			StartOffset:  0,
+			EndOffset:    len("A 段正文"),
+			SelectedText: "A 段正文",
+		},
+		PlanTypeID: "scene",
+		FieldValues: map[string]string{
+			"scenePurpose": "测试来源保护",
+		},
+	}); err != nil {
+		t.Fatalf("创建拆解失败: %v", err)
+	}
+
+	_, err = SplitChapterFromStart(SplitChapterRequest{
+		BookPath:         bookPath,
+		ChapterID:        chapterID,
+		NewTitle:         "第一章 A",
+		NewContent:       "A 段正文。\n\n",
+		RemainingContent: "B 段正文。",
+	})
+	if err == nil {
+		t.Fatal("已有选文来源的章节拆分成功，want error")
+	}
+	if !strings.Contains(err.Error(), "已有选文来源") {
+		t.Fatalf("错误信息 = %v, want 包含 已有选文来源", err)
 	}
 }

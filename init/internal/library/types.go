@@ -233,6 +233,24 @@ type SaveChapterContentRequest struct {
 	Content   string `json:"content"`
 }
 
+// SplitChapterRequest 从当前章节开头拆出一个新章节，当前章节保留剩余正文。
+type SplitChapterRequest struct {
+	BookPath         string `json:"bookPath"`
+	ChapterID        string `json:"chapterId"`
+	NewTitle         string `json:"newTitle"`
+	NewContent       string `json:"newContent"`
+	RemainingContent string `json:"remainingContent"`
+}
+
+// SplitChapterResult 返回章节拆分后更新的项目数据和两段章节正文。
+type SplitChapterResult struct {
+	Project          BookProject `json:"project"`
+	NewChapter       BookChapter `json:"newChapter"`
+	RemainingChapter BookChapter `json:"remainingChapter"`
+	NewContent       string      `json:"newContent"`
+	RemainingContent string      `json:"remainingContent"`
+}
+
 // SourceSelection 是创建拆解时从阅读正文中捕获的来源范围。
 type SourceSelection struct {
 	ChapterID    string `json:"chapterId"`

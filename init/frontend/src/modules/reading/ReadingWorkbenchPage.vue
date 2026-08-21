@@ -7,6 +7,7 @@ import {
   NButtonGroup,
   NDrawer,
   NDrawerContent,
+  NDropdown,
   NForm,
   NFormItem,
   NInput,
@@ -27,6 +28,7 @@ import {
   SaveChapterContent,
   SaveReadingPreferences,
   SaveReadingPosition,
+  SplitChapterFromStart,
 } from '@wails/go/main/App'
 import type { library } from '@wails/go/models'
 import type { BookProject } from '@/types/library'
@@ -65,8 +67,17 @@ const readingNotice = ref('')
 const catalogOpen = ref(false)
 const catalogSearch = ref('')
 const catalogPage = ref(1)
+const chapterContextMenuOpen = ref(false)
+const chapterContextMenuX = ref(0)
+const chapterContextMenuY = ref(0)
+const chapterContextChapter = ref<library.BookChapter | null>(null)
 const selectedSource = ref<CapturedSelection | null>(null)
 const deconstructionOpen = ref(false)
+const splitChapterOpen = ref(false)
+const splitChapterSaving = ref(false)
+const splitChapterError = ref('')
+const splitTargetChapter = ref<library.BookChapter | null>(null)
+const splitForm = ref({ newTitle: '', newContent: '', remainingContent: '' })
 const selectedPlanTypeId = ref('')
 const fieldValues = ref<Record<string, string>>({})
 const tagInput = ref('')
@@ -166,6 +177,8 @@ const catalogPageChapters = computed(() => {
   const start = (page - 1) * catalogPageSize
   return filteredCatalogChapters.value.slice(start, start + catalogPageSize)
 })
+
+const chapterContextMenuOptions = [{ label: '拆分章节', key: 'split' }]
 
 const currentChapterIndex = computed(() => {
   return chapters.value.findIndex((chapter) => chapter.id === currentChapter.value?.id)
@@ -315,6 +328,100 @@ function openCatalog() {
 async function jumpToChapter(chapter: library.BookChapter) {
   catalogOpen.value = false
   await loadChapter(chapter.id, 0)
+}
+
+function openChapterContextMenu(event: MouseEvent, chapter: library.BookChapter) {
+  chapterContextMenuOpen.value = false
+  chapterContextChapter.value = chapter
+  chapterContextMenuX.value = event.clientX
+  chapterContextMenuY.value = event.clientY
+  nextTick(() => {
+    chapterContextMenuOpen.value = true
+  })
+}
+
+function closeChapterContextMenu() {
+  chapterContextMenuOpen.value = false
+}
+
+async function handleChapterContextSelect(key: string) {
+  chapterContextMenuOpen.value = false
+  if (key !== 'split' || !chapterContextChapter.value) {
+    return
+  }
+  await openSplitChapterDialog(chapterContextChapter.value)
+}
+
+async function openSplitChapterDialog(chapter: library.BookChapter) {
+  const bookPath = activeBookPath.value
+  if (!bookPath) {
+    return
+  }
+  splitChapterError.value = ''
+  splitTargetChapter.value = chapter
+  splitForm.value = { newTitle: chapter.title, newContent: '', remainingContent: '' }
+  try {
+    const result = await GetChapterContent({ bookPath, chapterId: chapter.id })
+    splitTargetChapter.value = result.chapter
+    splitForm.value = {
+      newTitle: result.chapter.title,
+      newContent: result.content,
+      remainingContent: '',
+    }
+    splitChapterOpen.value = true
+  } catch (error) {
+    readingError.value = getErrorMessage(error)
+  }
+}
+
+async function saveSplitChapter() {
+  const bookPath = activeBookPath.value
+  if (!bookPath || !splitTargetChapter.value) {
+    return
+  }
+  if (!splitForm.value.newTitle.trim()) {
+    splitChapterError.value = '请填写新章节标题。'
+    return
+  }
+  if (!splitForm.value.newContent.trim()) {
+    splitChapterError.value = '请填写新章节正文。'
+    return
+  }
+  if (!splitForm.value.remainingContent.trim()) {
+    splitChapterError.value = '请填写当前章节剩余正文。'
+    return
+  }
+  splitChapterSaving.value = true
+  splitChapterError.value = ''
+  try {
+    const result = await SplitChapterFromStart({
+      bookPath,
+      chapterId: splitTargetChapter.value.id,
+      newTitle: splitForm.value.newTitle,
+      newContent: splitForm.value.newContent,
+      remainingContent: splitForm.value.remainingContent,
+    })
+    if (session.value) {
+      session.value.project = result.project
+      session.value.currentChapter = result.remainingChapter
+      session.value.chapterContent = result.remainingContent
+    }
+    currentChapter.value = result.remainingChapter
+    chapterContent.value = result.remainingContent
+    currentCharOffset.value = 0
+    catalogPage.value = Math.floor((result.remainingChapter.order - 1) / catalogPageSize) + 1
+    syncEditor()
+    clearSelection()
+    splitChapterOpen.value = false
+    await restoreScrollPosition()
+    await persistReadingPosition()
+    emitReadingSummary()
+    readingNotice.value = '章节已拆分，新章节已插入到当前章节之前。'
+  } catch (error) {
+    splitChapterError.value = getErrorMessage(error)
+  } finally {
+    splitChapterSaving.value = false
+  }
 }
 
 async function goPreviousChapter() {
@@ -747,10 +854,11 @@ onBeforeUnmount(() => {
             :key="chapter.id"
             class="chapter-item"
             :class="{ active: currentChapter?.id === chapter.id }"
+            @contextmenu.prevent.stop="openChapterContextMenu($event, chapter)"
             @click="jumpToChapter(chapter)"
           >
             <span>{{ chapter.title }}</span>
-            <small>第 {{ chapter.order }} 章 · {{ chapterCardCount(chapter.id) }} 张卡片</small>
+            <small>第 {{ chapter.order }} 章 · {{ chapterCardCount(chapter.id) }} 张卡片 · 右键可拆分</small>
           </button>
         </n-scrollbar>
         <div class="catalog-actions">
@@ -759,6 +867,59 @@ onBeforeUnmount(() => {
         </div>
       </n-drawer-content>
     </n-drawer>
+
+    <n-dropdown
+      trigger="manual"
+      placement="bottom-start"
+      :show="chapterContextMenuOpen"
+      :x="chapterContextMenuX"
+      :y="chapterContextMenuY"
+      :options="chapterContextMenuOptions"
+      @select="handleChapterContextSelect"
+      @clickoutside="closeChapterContextMenu"
+    />
+
+    <n-modal
+      v-model:show="splitChapterOpen"
+      preset="card"
+      title="拆分章节"
+      class="chapter-split-modal"
+      :bordered="false"
+    >
+      <n-alert type="info" :show-icon="false" class="reader-inline-alert split-inline-alert">
+        保存后会把“新章节正文”作为新章节插入到当前章节之前，当前章节保留“剩余正文”。适合把未知章节按顺序拆成 A、B、C。
+      </n-alert>
+      <n-alert v-if="splitChapterError" type="error" class="reader-inline-alert split-inline-alert">
+        {{ splitChapterError }}
+      </n-alert>
+      <n-form label-placement="top">
+        <n-form-item label="新章节标题">
+          <n-input v-model:value="splitForm.newTitle" />
+        </n-form-item>
+        <n-form-item label="新章节正文">
+          <n-input
+            v-model:value="splitForm.newContent"
+            type="textarea"
+            :autosize="{ minRows: 8, maxRows: 14 }"
+          />
+        </n-form-item>
+        <n-form-item label="当前章节剩余正文">
+          <n-input
+            v-model:value="splitForm.remainingContent"
+            type="textarea"
+            :autosize="{ minRows: 8, maxRows: 14 }"
+          />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="splitChapterOpen = false">取消</n-button>
+          <n-button type="primary" :loading="splitChapterSaving" @click="saveSplitChapter">
+            保存拆分
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
 
     <n-modal
       v-model:show="deconstructionOpen"
