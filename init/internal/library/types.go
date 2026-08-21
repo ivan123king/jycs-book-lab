@@ -3,15 +3,17 @@ package library
 
 // AppSettings 保存应用级偏好，只记录与具体书籍无关的全局配置。
 type AppSettings struct {
-	Version     int    `json:"version"`
-	LibraryPath string `json:"libraryPath"`
+	Version            int    `json:"version"`
+	LibraryPath        string `json:"libraryPath"`
+	LastOpenedBookPath string `json:"lastOpenedBookPath"`
 }
 
 // LibraryBookEntry 是书库 index.json 中用于快速展示书籍列表的轻量入口。
 type LibraryBookEntry struct {
-	BookName string `json:"bookName"`
-	BookPath string `json:"bookPath"`
-	BookSize int64  `json:"bookSize"`
+	BookName               string `json:"bookName"`
+	BookPath               string `json:"bookPath"`
+	BookSize               int64  `json:"bookSize"`
+	ReadingProgressPercent int    `json:"readingProgressPercent"`
 }
 
 // LibraryIndex 对应书库根目录的 index.json，不保存章节、拆解或素材详情。
@@ -106,10 +108,11 @@ type ReadingPosition struct {
 
 // ReadingState 是单本小说 reading/reading-state.json 的正式阅读位置数据。
 type ReadingState struct {
-	Version      int             `json:"version"`
-	BookID       string          `json:"bookId"`
-	LastPosition ReadingPosition `json:"lastPosition"`
-	LastMode     string          `json:"lastMode"`
+	Version                int             `json:"version"`
+	BookID                 string          `json:"bookId"`
+	LastPosition           ReadingPosition `json:"lastPosition"`
+	LastMode               string          `json:"lastMode"`
+	ReadingProgressPercent int             `json:"readingProgressPercent"`
 }
 
 // DeconstructionField 定义当前书拆解类型下的一个动态表单字段。
@@ -201,12 +204,13 @@ type ChapterContentResult struct {
 
 // SaveReadingPositionRequest 承载阅读页翻页、跳章或切换模式后的阅读位置。
 type SaveReadingPositionRequest struct {
-	BookPath           string `json:"bookPath"`
-	ChapterID          string `json:"chapterId"`
-	CharOffset         int    `json:"charOffset"`
-	ParagraphIndex     int    `json:"paragraphIndex"`
-	RenderedPageNumber int    `json:"renderedPageNumber"`
-	LastMode           string `json:"lastMode"`
+	BookPath               string `json:"bookPath"`
+	ChapterID              string `json:"chapterId"`
+	CharOffset             int    `json:"charOffset"`
+	ParagraphIndex         int    `json:"paragraphIndex"`
+	RenderedPageNumber     int    `json:"renderedPageNumber"`
+	LastMode               string `json:"lastMode"`
+	ReadingProgressPercent int    `json:"readingProgressPercent"`
 }
 
 // SaveChapterContentRequest 保存编辑 TAB 中修改后的章节标题和正文。

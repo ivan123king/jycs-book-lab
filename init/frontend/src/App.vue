@@ -71,6 +71,14 @@ function updateReadingPosition(summary: string) {
     readingPosition: summary,
   }
 }
+
+function clearCurrentBookIfRemoved(bookPath: string) {
+  if (currentProject.value?.book.bookPath !== bookPath) {
+    return
+  }
+  currentProject.value = null
+  currentBook.value = { ...defaultCurrentBook }
+}
 </script>
 
 <template>
@@ -92,11 +100,13 @@ function updateReadingPosition(summary: string) {
                 v-if="activeView === 'library'"
                 v-model:mode="libraryMode"
                 @open-book="applyCurrentBook"
+                @book-removed="clearCurrentBookIfRemoved"
               />
               <ReadingWorkbenchPage
                 v-else-if="activeView === 'reading'"
                 :project="currentProject"
                 @reading-updated="updateReadingPosition"
+                @project-restored="applyCurrentBook"
               />
               <DeconstructionCardsPage
                 v-else-if="activeView === 'deconstructions'"

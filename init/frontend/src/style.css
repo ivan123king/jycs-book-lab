@@ -279,6 +279,20 @@ p {
     font-size: 15px;
 }
 
+.book-progress-track {
+    height: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+    background: #e3e9ee;
+    border-radius: 999px;
+}
+
+.book-progress-value {
+    height: 100%;
+    background: linear-gradient(90deg, #2f6f6d, #4258a6);
+    border-radius: inherit;
+}
+
 .book-card-footer {
     justify-content: flex-end;
 }

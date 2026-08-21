@@ -38,7 +38,8 @@ library-root/
     {
       "bookName": "雾港来信",
       "bookPath": "E:/BookLibrary/books/book-20260821-001",
-      "bookSize": 182430
+      "bookSize": 182430,
+      "readingProgressPercent": 63
     }
   ]
 }
@@ -53,6 +54,25 @@ library-root/
 | `bookName` | 小说名，用于书库列表展示。 |
 | `bookPath` | 小说目录路径，不是原始导入文件路径。 |
 | `bookSize` | 导入副本文件大小，单位字节。 |
+| `readingProgressPercent` | 书库列表展示用的阅读进度百分比摘要；如果写入 `index.json`，也只能作为可由单书 `reading/reading-state.json` 重新生成的缓存。 |
+
+阅读进度原则：
+
+1. 单本书正式阅读位置保存在 `books/{bookId}/reading/reading-state.json`。
+2. 书库列表展示进度时，应从单书目录读取 `readingProgressPercent` 或按章节位置估算。
+3. `index.json` 中的进度字段不能成为唯一数据源；删除或重建索引后，进度必须能从单书目录恢复。
+
+## 书籍移除
+
+用户在书库页移除一本小说时，后端必须按以下顺序处理：
+
+1. 读取当前书库根目录的 `index.json`。
+2. 根据 `bookPath` 找到对应书库条目。
+3. 校验该 `bookPath` 必须位于当前书库的 `books/` 子目录下。
+4. 删除该 `books/{bookId}` 项目目录，目录内包含 `book.json`、`original.txt`、`chapters/`、拆解方案、拆解卡片和素材等单书正式数据。
+5. 从 `index.json` 的 `books` 列表中移除该条目并重新写入。
+
+移除只处理导入后生成的书库项目目录，不删除用户最初导入时选择的外部 TXT 文件。若索引中的路径不在当前书库 `books/` 子目录下，应拒绝删除，避免异常索引误删用户其他本地文件。
 
 ## 小说数据
 

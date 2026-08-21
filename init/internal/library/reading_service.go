@@ -95,18 +95,24 @@ func SaveReadingPosition(request SaveReadingPositionRequest) (ReadingState, erro
 		mode = "read"
 	}
 	now := time.Now().Format(time.RFC3339)
+	position := ReadingPosition{
+		ChapterID:          chapter.ID,
+		ChapterOrder:       chapter.Order,
+		CharOffset:         maxInt(0, request.CharOffset),
+		ParagraphIndex:     maxInt(0, request.ParagraphIndex),
+		RenderedPageNumber: maxInt(1, request.RenderedPageNumber),
+		UpdatedAt:          now,
+	}
+	progressPercent := clampPercent(request.ReadingProgressPercent)
+	if progressPercent == 0 && (position.ChapterOrder > 1 || position.CharOffset > 0) {
+		progressPercent = estimateReadingProgressPercent(project, position)
+	}
 	state := ReadingState{
-		Version: 1,
-		BookID:  project.Book.ID,
-		LastPosition: ReadingPosition{
-			ChapterID:          chapter.ID,
-			ChapterOrder:       chapter.Order,
-			CharOffset:         maxInt(0, request.CharOffset),
-			ParagraphIndex:     maxInt(0, request.ParagraphIndex),
-			RenderedPageNumber: maxInt(1, request.RenderedPageNumber),
-			UpdatedAt:          now,
-		},
-		LastMode: mode,
+		Version:                1,
+		BookID:                 project.Book.ID,
+		LastPosition:           position,
+		LastMode:               mode,
+		ReadingProgressPercent: progressPercent,
 	}
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(readingStateRelativePath)), state); err != nil {
 		return ReadingState{}, fmt.Errorf("保存阅读位置失败: %w", err)
@@ -264,8 +270,9 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 
 func defaultReadingState(bookID string, chapter BookChapter) ReadingState {
 	return ReadingState{
-		Version: 1,
-		BookID:  bookID,
+		Version:                1,
+		BookID:                 bookID,
+		ReadingProgressPercent: 0,
 		LastPosition: ReadingPosition{
 			ChapterID:          chapter.ID,
 			ChapterOrder:       chapter.Order,
@@ -336,7 +343,43 @@ func loadReadingState(bookPath string, project BookProject) (ReadingState, error
 	if state.LastPosition.ChapterID == "" {
 		return defaultReadingState(project.Book.ID, chooseChapterForPosition(project, "")), nil
 	}
+	if state.ReadingProgressPercent == 0 && (state.LastPosition.ChapterOrder > 1 || state.LastPosition.CharOffset > 0) {
+		state.ReadingProgressPercent = estimateReadingProgressPercent(project, state.LastPosition)
+	} else {
+		state.ReadingProgressPercent = clampPercent(state.ReadingProgressPercent)
+	}
 	return state, nil
+}
+
+func estimateReadingProgressPercent(project BookProject, position ReadingPosition) int {
+	totalWordCount := 0
+	completedWordCount := 0
+	for _, chapter := range project.Chapters {
+		chapterWordCount := maxInt(0, chapter.WordCount)
+		totalWordCount += chapterWordCount
+		if chapter.ID == position.ChapterID {
+			completedWordCount += minInt(chapterWordCount, maxInt(0, position.CharOffset))
+			continue
+		}
+		if chapter.Order < position.ChapterOrder {
+			completedWordCount += chapterWordCount
+		}
+	}
+	if totalWordCount <= 0 {
+		return 0
+	}
+	progress := int(float64(completedWordCount) / float64(totalWordCount) * 100)
+	return clampPercent(progress)
+}
+
+func clampPercent(value int) int {
+	if value < 0 {
+		return 0
+	}
+	if value > 100 {
+		return 100
+	}
+	return value
 }
 
 func loadDeconstructionPlan(bookPath string, bookID string) (DeconstructionPlan, error) {
@@ -534,6 +577,13 @@ func nextSequentialID(prefix string, next int) string {
 
 func maxInt(left int, right int) int {
 	if left > right {
+		return left
+	}
+	return right
+}
+
+func minInt(left int, right int) int {
+	if left < right {
 		return left
 	}
 	return right

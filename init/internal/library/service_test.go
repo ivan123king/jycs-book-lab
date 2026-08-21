@@ -62,6 +62,73 @@ func TestConfirmNovelImportCreatesPortableBookProject(t *testing.T) {
 	}
 }
 
+// TestRemoveBookFromLibraryDeletesProjectData 覆盖书库移除会删除单书项目目录并刷新轻量索引。
+func TestRemoveBookFromLibraryDeletesProjectData(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "雾港来信.txt")
+	sourceText := "第一章 远处的灯\n雨在码头上铺开。\n"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-remove-001",
+		SourcePath: sourcePath,
+		BookName:   "雾港来信",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+
+	bookPath := result.Project.Book.BookPath
+	state, err := RemoveBookFromLibrary(libraryPath, bookPath)
+	if err != nil {
+		t.Fatalf("移除书籍失败: %v", err)
+	}
+	if len(state.Index.Books) != 0 {
+		t.Fatalf("移除后书库索引条目数 = %d, want 0", len(state.Index.Books))
+	}
+	if _, err := os.Stat(bookPath); !os.IsNotExist(err) {
+		t.Fatalf("小说项目目录未删除，stat err = %v", err)
+	}
+
+	reloaded, err := ensureLibraryIndex(libraryPath)
+	if err != nil {
+		t.Fatalf("重新读取书库索引失败: %v", err)
+	}
+	if len(reloaded.Books) != 0 {
+		t.Fatalf("落盘索引条目数 = %d, want 0", len(reloaded.Books))
+	}
+}
+
+// TestRemoveBookFromLibraryRejectsPathOutsideBooks 确保异常索引不会导致删除书库外部数据。
+func TestRemoveBookFromLibraryRejectsPathOutsideBooks(t *testing.T) {
+	libraryPath := t.TempDir()
+	outsideDir := filepath.Join(t.TempDir(), "outside-book")
+	if err := os.MkdirAll(outsideDir, 0o755); err != nil {
+		t.Fatalf("创建外部目录失败: %v", err)
+	}
+	index := LibraryIndex{
+		Version: 1,
+		Books: []LibraryBookEntry{
+			{
+				BookName: "异常条目",
+				BookPath: outsideDir,
+				BookSize: 12,
+			},
+		},
+	}
+	if err := writeJSONFileAtomic(filepath.Join(libraryPath, libraryIndexName), index); err != nil {
+		t.Fatalf("写入异常索引失败: %v", err)
+	}
+
+	if _, err := RemoveBookFromLibrary(libraryPath, outsideDir); err == nil {
+		t.Fatal("移除书库外部路径成功，want error")
+	}
+	if _, err := os.Stat(outsideDir); err != nil {
+		t.Fatalf("外部目录不应被删除: %v", err)
+	}
+}
+
 // TestDetectChaptersFallsBackToSingleChapter 确保无章节标题的 TXT 也能形成可打开项目。
 func TestDetectChaptersFallsBackToSingleChapter(t *testing.T) {
 	chapters := DetectChapters("没有章节标题的正文")
@@ -240,18 +307,38 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 
 	state, err := SaveReadingPosition(SaveReadingPositionRequest{
-		BookPath:           bookPath,
-		ChapterID:          "chapter-000002",
-		CharOffset:         2,
-		ParagraphIndex:     0,
-		RenderedPageNumber: 1,
-		LastMode:           "read",
+		BookPath:               bookPath,
+		ChapterID:              "chapter-000002",
+		CharOffset:             2,
+		ParagraphIndex:         0,
+		RenderedPageNumber:     1,
+		LastMode:               "read",
+		ReadingProgressPercent: 50,
 	})
 	if err != nil {
 		t.Fatalf("保存阅读位置失败: %v", err)
 	}
 	if state.LastPosition.ChapterID != "chapter-000002" {
 		t.Fatalf("阅读位置章节 = %s, want chapter-000002", state.LastPosition.ChapterID)
+	}
+	if state.ReadingProgressPercent != 50 {
+		t.Fatalf("阅读进度 = %d, want 50", state.ReadingProgressPercent)
+	}
+	progressIndex := enrichLibraryReadingProgress(LibraryIndex{
+		Version: 1,
+		Books: []LibraryBookEntry{
+			{BookName: "雾港来信", BookPath: bookPath, BookSize: result.Project.Book.BookSize},
+		},
+	})
+	if progressIndex.Books[0].ReadingProgressPercent != 50 {
+		t.Fatalf("书库阅读进度 = %d, want 50", progressIndex.Books[0].ReadingProgressPercent)
+	}
+	restoredSession, err := OpenReadingSession(bookPath)
+	if err != nil {
+		t.Fatalf("重新打开阅读会话失败: %v", err)
+	}
+	if restoredSession.CurrentChapter.ID != "chapter-000002" {
+		t.Fatalf("恢复阅读章节 = %s, want chapter-000002", restoredSession.CurrentChapter.ID)
 	}
 
 	savedChapter, err := SaveChapterContent(SaveChapterContentRequest{

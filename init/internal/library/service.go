@@ -85,6 +85,7 @@ func LoadLibraryState() (LibraryState, error) {
 	if err != nil {
 		return LibraryState{LibraryPath: settings.LibraryPath, Index: emptyLibraryIndex()}, err
 	}
+	index = enrichLibraryReadingProgress(index)
 	return LibraryState{LibraryPath: settings.LibraryPath, Index: index}, nil
 }
 
@@ -104,11 +105,93 @@ func SetLibraryPath(libraryPath string) (LibraryState, error) {
 	if err := saveSettings(AppSettings{Version: 1, LibraryPath: cleanPath}); err != nil {
 		return LibraryState{}, err
 	}
+	index = enrichLibraryReadingProgress(index)
 	return LibraryState{LibraryPath: cleanPath, Index: index}, nil
+}
+
+// RememberLastOpenedBookPath 只把最近打开的小说目录入口写入应用设置，阅读位置仍以单书目录为准。
+func RememberLastOpenedBookPath(bookPath string) error {
+	bookPath = filepath.Clean(strings.TrimSpace(bookPath))
+	if bookPath == "." || bookPath == "" {
+		return errors.New("最近打开的小说目录不能为空")
+	}
+	if _, err := OpenBookProject(bookPath); err != nil {
+		return err
+	}
+	settings, err := loadSettings()
+	if err != nil {
+		return err
+	}
+	settings.LastOpenedBookPath = bookPath
+	return saveSettings(settings)
+}
+
+// OpenLastReadingSession 根据应用设置中的最近小说入口恢复阅读工作台。
+func OpenLastReadingSession() (*ReadingSession, error) {
+	settings, err := loadSettings()
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(settings.LastOpenedBookPath) == "" {
+		return nil, nil
+	}
+	session, err := OpenReadingSession(settings.LastOpenedBookPath)
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
 }
 
 func emptyLibraryIndex() LibraryIndex {
 	return LibraryIndex{Version: 1, Books: []LibraryBookEntry{}}
+}
+
+func enrichLibraryReadingProgress(index LibraryIndex) LibraryIndex {
+	if index.Books == nil {
+		index.Books = []LibraryBookEntry{}
+	}
+	for bookIndex := range index.Books {
+		progress, err := readBookReadingProgress(index.Books[bookIndex].BookPath)
+		if err != nil {
+			index.Books[bookIndex].ReadingProgressPercent = 0
+			continue
+		}
+		index.Books[bookIndex].ReadingProgressPercent = progress
+	}
+	return index
+}
+
+func readBookReadingProgress(bookPath string) (int, error) {
+	project, err := readBookProjectSummary(bookPath)
+	if err != nil {
+		return 0, err
+	}
+	var state ReadingState
+	if err := readOptionalJSONFile(filepath.Join(projectRootPath(bookPath), filepath.FromSlash(readingStateRelativePath)), &state); errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	if state.ReadingProgressPercent > 0 {
+		return clampPercent(state.ReadingProgressPercent), nil
+	}
+	return estimateReadingProgressPercent(project, state.LastPosition), nil
+}
+
+func readBookProjectSummary(bookPath string) (BookProject, error) {
+	cleanBookPath := filepath.Clean(bookPath)
+	content, err := os.ReadFile(filepath.Join(cleanBookPath, bookJSONName))
+	if err != nil {
+		return BookProject{}, err
+	}
+	var project BookProject
+	if err := json.Unmarshal(content, &project); err != nil {
+		return BookProject{}, err
+	}
+	if project.Version == 0 {
+		project.Version = 1
+	}
+	return project, nil
 }
 
 func ensureLibraryIndex(libraryPath string) (LibraryIndex, error) {
@@ -226,7 +309,7 @@ func ConfirmNovelImport(libraryPath string, request ConfirmImportRequest) (Confi
 	}
 
 	return ConfirmImportResult{
-		Library: LibraryState{LibraryPath: libraryPath, Index: index},
+		Library: LibraryState{LibraryPath: libraryPath, Index: enrichLibraryReadingProgress(index)},
 		Project: project,
 	}, nil
 }
@@ -350,6 +433,99 @@ func appendBookToIndex(libraryPath string, entry LibraryBookEntry) (LibraryIndex
 		return LibraryIndex{}, err
 	}
 	return index, nil
+}
+
+// RemoveBookFromLibrary 从书库 index.json 移除入口，并删除该书在 books 目录下的完整项目数据。
+func RemoveBookFromLibrary(libraryPath string, bookPath string) (LibraryState, error) {
+	libraryPath = filepath.Clean(strings.TrimSpace(libraryPath))
+	if libraryPath == "." || libraryPath == "" {
+		return LibraryState{}, errors.New("请先设置书库目录")
+	}
+	bookPath = filepath.Clean(strings.TrimSpace(bookPath))
+	if bookPath == "." || bookPath == "" {
+		return LibraryState{}, errors.New("要移除的小说目录不能为空")
+	}
+
+	index, err := ensureLibraryIndex(libraryPath)
+	if err != nil {
+		return LibraryState{}, err
+	}
+
+	booksRoot := filepath.Join(libraryPath, "books")
+	nextBooks := make([]LibraryBookEntry, 0, len(index.Books))
+	var removedEntry LibraryBookEntry
+	found := false
+	for _, entry := range index.Books {
+		if samePath(entry.BookPath, bookPath) {
+			removedEntry = entry
+			found = true
+			continue
+		}
+		nextBooks = append(nextBooks, entry)
+	}
+	if !found {
+		return LibraryState{}, errors.New("书库中未找到要移除的小说")
+	}
+
+	// 重要数据删除只允许落在当前书库 books 子目录内，避免异常索引误删外部文件。
+	if !isPathInside(booksRoot, removedEntry.BookPath) {
+		return LibraryState{}, errors.New("小说目录不在当前书库 books 目录下，已拒绝移除")
+	}
+	if err := os.RemoveAll(removedEntry.BookPath); err != nil {
+		return LibraryState{}, fmt.Errorf("删除小说项目目录失败: %w", err)
+	}
+
+	index.Books = nextBooks
+	if index.Books == nil {
+		index.Books = []LibraryBookEntry{}
+	}
+	if err := writeJSONFileAtomic(filepath.Join(libraryPath, libraryIndexName), index); err != nil {
+		return LibraryState{}, fmt.Errorf("更新书库索引失败: %w", err)
+	}
+	if err := clearLastOpenedBookPathIfMatches(bookPath); err != nil {
+		return LibraryState{}, err
+	}
+	return LibraryState{LibraryPath: libraryPath, Index: enrichLibraryReadingProgress(index)}, nil
+}
+
+func clearLastOpenedBookPathIfMatches(bookPath string) error {
+	settings, err := loadSettings()
+	if err != nil {
+		return err
+	}
+	if !samePath(settings.LastOpenedBookPath, bookPath) {
+		return nil
+	}
+	settings.LastOpenedBookPath = ""
+	return saveSettings(settings)
+}
+
+func samePath(left string, right string) bool {
+	leftAbs, leftErr := filepath.Abs(filepath.Clean(left))
+	rightAbs, rightErr := filepath.Abs(filepath.Clean(right))
+	if leftErr == nil && rightErr == nil {
+		return strings.EqualFold(leftAbs, rightAbs)
+	}
+	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
+}
+
+func isPathInside(parent string, child string) bool {
+	parentAbs, err := filepath.Abs(filepath.Clean(parent))
+	if err != nil {
+		return false
+	}
+	childAbs, err := filepath.Abs(filepath.Clean(child))
+	if err != nil {
+		return false
+	}
+	relativePath, err := filepath.Rel(parentAbs, childAbs)
+	if err != nil {
+		return false
+	}
+	return relativePath != "." &&
+		relativePath != ".." &&
+		!strings.HasPrefix(relativePath, ".."+string(os.PathSeparator)) &&
+		!filepath.IsAbs(relativePath)
 }
 
 // OpenBookProject 以单本小说目录中的 book.json 作为入口读取正式书籍数据。

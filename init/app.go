@@ -137,17 +137,62 @@ func (a *App) ConfirmNovelImport(request ConfirmImportRequest) (ConfirmImportRes
 	if state.LibraryPath == "" {
 		return ConfirmImportResult{}, fmt.Errorf("请先设置书库目录")
 	}
-	return booklibrary.ConfirmNovelImport(state.LibraryPath, request)
+	result, err := booklibrary.ConfirmNovelImport(state.LibraryPath, request)
+	if err != nil {
+		return ConfirmImportResult{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(result.Project.Book.BookPath); err != nil {
+		return ConfirmImportResult{}, err
+	}
+	return result, nil
 }
 
 // OpenBookProject 读取单本小说目录中的 book.json，作为进入当前书工作区的入口。
 func (a *App) OpenBookProject(bookPath string) (BookProject, error) {
-	return booklibrary.OpenBookProject(bookPath)
+	project, err := booklibrary.OpenBookProject(bookPath)
+	if err != nil {
+		return BookProject{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
+		return BookProject{}, err
+	}
+	return project, nil
+}
+
+// RemoveBookFromLibrary 删除书库中指定小说的项目目录，并返回更新后的书库索引。
+func (a *App) RemoveBookFromLibrary(bookPath string) (LibraryState, error) {
+	state, err := booklibrary.LoadLibraryState()
+	if err != nil {
+		return LibraryState{}, err
+	}
+	if state.LibraryPath == "" {
+		return LibraryState{}, fmt.Errorf("请先设置书库目录")
+	}
+	return booklibrary.RemoveBookFromLibrary(state.LibraryPath, bookPath)
 }
 
 // OpenReadingSession 打开阅读工作台，并从单本小说目录恢复阅读位置和当前章节正文。
 func (a *App) OpenReadingSession(bookPath string) (ReadingSession, error) {
-	return booklibrary.OpenReadingSession(bookPath)
+	session, err := booklibrary.OpenReadingSession(bookPath)
+	if err != nil {
+		return ReadingSession{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
+		return ReadingSession{}, err
+	}
+	return session, nil
+}
+
+// OpenLastReadingSession 在应用重启后从最近打开书籍入口恢复阅读工作台。
+func (a *App) OpenLastReadingSession() (*ReadingSession, error) {
+	session, err := booklibrary.OpenLastReadingSession()
+	if err != nil || session == nil {
+		return session, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(session.Project.Book.BookPath); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 // GetChapterContent 按章节 ID 读取用户修正后的章节正文 TXT。

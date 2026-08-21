@@ -154,6 +154,7 @@ export namespace library {
 	    bookName: string;
 	    bookPath: string;
 	    bookSize: number;
+	    readingProgressPercent: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new LibraryBookEntry(source);
@@ -164,6 +165,7 @@ export namespace library {
 	        this.bookName = source["bookName"];
 	        this.bookPath = source["bookPath"];
 	        this.bookSize = source["bookSize"];
+	        this.readingProgressPercent = source["readingProgressPercent"];
 	    }
 	}
 	export class LibraryIndex {
@@ -671,6 +673,7 @@ export namespace library {
 	    bookId: string;
 	    lastPosition: ReadingPosition;
 	    lastMode: string;
+	    readingProgressPercent: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ReadingState(source);
@@ -682,6 +685,7 @@ export namespace library {
 	        this.bookId = source["bookId"];
 	        this.lastPosition = this.convertValues(source["lastPosition"], ReadingPosition);
 	        this.lastMode = source["lastMode"];
+	        this.readingProgressPercent = source["readingProgressPercent"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -770,6 +774,7 @@ export namespace library {
 	    paragraphIndex: number;
 	    renderedPageNumber: number;
 	    lastMode: string;
+	    readingProgressPercent: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SaveReadingPositionRequest(source);
@@ -783,6 +788,7 @@ export namespace library {
 	        this.paragraphIndex = source["paragraphIndex"];
 	        this.renderedPageNumber = source["renderedPageNumber"];
 	        this.lastMode = source["lastMode"];
+	        this.readingProgressPercent = source["readingProgressPercent"];
 	    }
 	}
 	

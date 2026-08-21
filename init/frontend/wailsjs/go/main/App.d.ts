@@ -16,11 +16,15 @@ export function Greet(arg1:string):Promise<string>;
 
 export function OpenBookProject(arg1:string):Promise<library.BookProject>;
 
+export function OpenLastReadingSession():Promise<library.ReadingSession>;
+
 export function OpenReadingSession(arg1:string):Promise<library.ReadingSession>;
 
 export function PreviewNovelImport():Promise<library.ImportDraft>;
 
 export function ReDetectNovelImport(arg1:string):Promise<library.ImportDraft>;
+
+export function RemoveBookFromLibrary(arg1:string):Promise<library.LibraryState>;
 
 export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
 

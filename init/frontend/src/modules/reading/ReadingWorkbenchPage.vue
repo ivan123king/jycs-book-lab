@@ -21,6 +21,7 @@ import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw
 import {
   CreateDeconstructionCard,
   GetChapterContent,
+  OpenLastReadingSession,
   OpenReadingSession,
   SaveChapterContent,
   SaveReadingPosition,
@@ -35,6 +36,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   readingUpdated: [summary: string]
+  projectRestored: [project: BookProject]
 }>()
 
 type ReaderMode = 'read' | 'edit'
@@ -76,6 +78,10 @@ const editError = ref('')
 
 const chapters = computed(() => session.value?.project.chapters ?? [])
 
+const activeBookPath = computed(() => props.project?.book.bookPath ?? session.value?.project.book.bookPath ?? '')
+
+const hasReadingTarget = computed(() => Boolean(activeBookPath.value))
+
 const currentPageContent = computed(() => {
   if (!chapterContent.value) {
     return ''
@@ -91,7 +97,28 @@ const readingProgressText = computed(() => {
   if (!currentChapter.value) {
     return '未打开章节'
   }
-  return `${currentChapter.value.title} · 第 ${currentPageNumber.value}/${pageCount.value} 页`
+  return `${currentChapter.value.title} · ${overallReadingPercent.value}% · 第 ${currentPageNumber.value}/${pageCount.value} 页`
+})
+
+const overallReadingPercent = computed(() => {
+  if (!currentChapter.value || chapters.value.length === 0) {
+    return 0
+  }
+  const totalWordCount = chapters.value.reduce((sum, chapter) => sum + Math.max(0, chapter.wordCount), 0)
+  if (totalWordCount <= 0) {
+    return 0
+  }
+  const visibleEnd = Math.min(chapterContent.value.length, currentPageStart.value + currentPageContent.value.length)
+  const completedWordCount = chapters.value.reduce((sum, chapter) => {
+    if (chapter.id === currentChapter.value?.id) {
+      return sum + Math.min(Math.max(chapter.wordCount, chapterContent.value.length), visibleEnd)
+    }
+    if (chapter.order < (currentChapter.value?.order ?? 0)) {
+      return sum + Math.max(0, chapter.wordCount)
+    }
+    return sum
+  }, 0)
+  return clampPercent(Math.round((completedWordCount / totalWordCount) * 100))
 })
 
 const selectedPlanType = computed(() => {
@@ -152,15 +179,22 @@ const editDirty = computed(() => {
  * 打开当前书阅读会补齐旧项目缺失的阅读数据文件，并恢复上次阅读位置。
  */
 async function loadReadingSession() {
-  if (!props.project?.book.bookPath) {
-    session.value = null
+  const requestedBookPath = props.project?.book.bookPath ?? ''
+  if (requestedBookPath && session.value?.project.book.bookPath === requestedBookPath) {
     return
+  }
+  if (!requestedBookPath) {
+    session.value = null
   }
   loading.value = true
   readingError.value = ''
   readingNotice.value = ''
   try {
-    const loaded = await OpenReadingSession(props.project.book.bookPath)
+    const loaded = requestedBookPath ? await OpenReadingSession(requestedBookPath) : await OpenLastReadingSession()
+    if (!loaded) {
+      readingNotice.value = '还没有最近阅读记录，请先从书库打开一本小说。'
+      return
+    }
     session.value = loaded
     currentChapter.value = loaded.currentChapter
     chapterContent.value = loaded.chapterContent
@@ -168,6 +202,9 @@ async function loadReadingSession() {
     selectedPlanTypeId.value = loaded.plan.types[0]?.id ?? ''
     syncEditor()
     emitReadingSummary()
+    if (!requestedBookPath) {
+      emit('projectRestored', loaded.project)
+    }
   } catch (error) {
     readingError.value = getErrorMessage(error)
   } finally {
@@ -179,14 +216,15 @@ async function loadReadingSession() {
  * 按章节加载正文并立即保存阅读位置，目录跳转和跨章节翻页共用这条路径。
  */
 async function loadChapter(chapterId: string, charOffset = 0) {
-  if (!props.project?.book.bookPath) {
+  const bookPath = activeBookPath.value
+  if (!bookPath) {
     return
   }
   pageLoading.value = true
   readingError.value = ''
   readingNotice.value = ''
   try {
-    const result = await GetChapterContent({ bookPath: props.project.book.bookPath, chapterId })
+    const result = await GetChapterContent({ bookPath, chapterId })
     currentChapter.value = result.chapter
     chapterContent.value = result.content
     currentPageStart.value = clampPageStart(charOffset)
@@ -238,18 +276,20 @@ async function goNextPage() {
 }
 
 async function persistReadingPosition() {
-  if (!props.project?.book.bookPath || !currentChapter.value) {
+  const bookPath = activeBookPath.value
+  if (!bookPath || !currentChapter.value) {
     return
   }
   savingPosition.value = true
   try {
     const state = await SaveReadingPosition({
-      bookPath: props.project.book.bookPath,
+      bookPath,
       chapterId: currentChapter.value.id,
       charOffset: currentPageStart.value,
       paragraphIndex: estimateParagraphIndex(chapterContent.value, currentPageStart.value),
       renderedPageNumber: currentPageNumber.value,
       lastMode: readerMode.value,
+      readingProgressPercent: overallReadingPercent.value,
     })
     if (session.value) {
       session.value.state = state
@@ -324,7 +364,8 @@ function openDeconstructionDialog() {
 }
 
 async function saveDeconstruction(keepDialogOpen: boolean) {
-  if (!props.project?.book.bookPath || !selectedSource.value || !selectedPlanType.value) {
+  const bookPath = activeBookPath.value
+  if (!bookPath || !selectedSource.value || !selectedPlanType.value) {
     return
   }
   const missingField = visiblePlanFields.value.find((field) => field.required && !fieldValues.value[field.id]?.trim())
@@ -336,7 +377,7 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
   cardError.value = ''
   try {
     const result = await CreateDeconstructionCard({
-      bookPath: props.project.book.bookPath,
+      bookPath,
       selection: selectedSource.value,
       planTypeId: selectedPlanType.value.id,
       fieldValues: fieldValues.value,
@@ -361,7 +402,8 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
 }
 
 async function saveChapterEdit() {
-  if (!props.project?.book.bookPath || !currentChapter.value) {
+  const bookPath = activeBookPath.value
+  if (!bookPath || !currentChapter.value) {
     return
   }
   editSaving.value = true
@@ -369,7 +411,7 @@ async function saveChapterEdit() {
   editNotice.value = ''
   try {
     const result = await SaveChapterContent({
-      bookPath: props.project.book.bookPath,
+      bookPath,
       chapterId: currentChapter.value.id,
       title: editTitle.value,
       content: editContent.value,
@@ -436,6 +478,13 @@ function splitTags(value: string) {
     .filter(Boolean)
 }
 
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(100, Math.max(0, value))
+}
+
 function chapterCardCount(chapterId: string) {
   return deconstructionCountByChapter.value.get(chapterId) ?? 0
 }
@@ -466,8 +515,8 @@ onMounted(loadReadingSession)
 
 <template>
   <section class="reading-page">
-    <n-alert v-if="!project" type="info" class="reader-empty-state">
-      请先从书库打开一本小说。阅读位置、拆解卡片和选文来源都会保存在该小说项目目录中。
+    <n-alert v-if="!hasReadingTarget && !loading" type="info" class="reader-empty-state">
+      {{ readingNotice || '请先从书库打开一本小说。阅读位置、拆解卡片和选文来源都会保存在该小说项目目录中。' }}
     </n-alert>
 
     <n-spin v-else :show="loading" class="reader-spin">

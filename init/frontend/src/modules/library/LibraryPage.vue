@@ -14,9 +14,10 @@ import {
   NGrid,
   NInput,
   NPagination,
+  NPopconfirm,
   NSpace,
 } from 'naive-ui'
-import { FileInput, FolderOpen, RotateCcw, Save, Search } from 'lucide-vue-next'
+import { FileInput, FolderOpen, RotateCcw, Save, Search, Trash2 } from 'lucide-vue-next'
 import {
   ChooseLibraryDirectory,
   ConfirmNovelImport,
@@ -24,6 +25,7 @@ import {
   OpenBookProject,
   PreviewNovelImport,
   ReDetectNovelImport,
+  RemoveBookFromLibrary,
 } from '@wails/go/main/App'
 import type { BookProject, ImportDraft, LibraryBookEntry, LibraryState } from '@/types/library'
 import { formatBytes, getErrorMessage } from '@/utils/format'
@@ -35,6 +37,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:mode': [mode: 'list' | 'import']
   openBook: [project: BookProject]
+  bookRemoved: [bookPath: string]
 }>()
 
 const libraryMode = computed({
@@ -46,6 +49,7 @@ const libraryState = ref<LibraryState | null>(null)
 const libraryLoading = ref(false)
 const libraryError = ref('')
 const librarySearch = ref('')
+const removingBookPath = ref('')
 const importDraft = ref<ImportDraft | null>(null)
 const importForm = ref({ bookName: '', description: '' })
 const importLoading = ref(false)
@@ -215,6 +219,22 @@ async function openBook(book: LibraryBookEntry) {
   }
 }
 
+/**
+ * 移除书库条目会删除该书完整项目目录，前端只负责确认和刷新索引。
+ */
+async function removeBook(book: LibraryBookEntry) {
+  removingBookPath.value = book.bookPath
+  libraryError.value = ''
+  try {
+    libraryState.value = await RemoveBookFromLibrary(book.bookPath)
+    emit('bookRemoved', book.bookPath)
+  } catch (error) {
+    libraryError.value = getErrorMessage(error)
+  } finally {
+    removingBookPath.value = ''
+  }
+}
+
 function applyImportDraft(draft: ImportDraft) {
   importDraft.value = draft
   importForm.value = {
@@ -312,10 +332,36 @@ onMounted(loadLibrary)
               </div>
               <div>
                 <span>阅读进度</span>
-                <strong>0%</strong>
+                <strong>{{ book.readingProgressPercent ?? 0 }}%</strong>
               </div>
             </div>
+            <div class="book-progress-track" aria-hidden="true">
+              <div
+                class="book-progress-value"
+                :style="{ width: `${Math.min(100, Math.max(0, book.readingProgressPercent ?? 0))}%` }"
+              />
+            </div>
             <div class="card-footer book-card-footer">
+              <n-popconfirm
+                positive-text="移除"
+                negative-text="取消"
+                @positive-click="removeBook(book)"
+              >
+                <template #trigger>
+                  <n-button
+                    size="small"
+                    type="error"
+                    secondary
+                    :loading="removingBookPath === book.bookPath"
+                  >
+                    <template #icon>
+                      <Trash2 :size="15" />
+                    </template>
+                    移除
+                  </n-button>
+                </template>
+                移除后会删除此书在书库中的项目目录，包括原文、章节、拆解和素材数据。此操作不可撤销。
+              </n-popconfirm>
               <n-button size="small" type="primary" @click="openBook(book)">打开</n-button>
             </div>
           </n-card>

@@ -30,6 +30,10 @@ export function OpenBookProject(arg1) {
   return window['go']['main']['App']['OpenBookProject'](arg1);
 }
 
+export function OpenLastReadingSession() {
+  return window['go']['main']['App']['OpenLastReadingSession']();
+}
+
 export function OpenReadingSession(arg1) {
   return window['go']['main']['App']['OpenReadingSession'](arg1);
 }
@@ -40,6 +44,10 @@ export function PreviewNovelImport() {
 
 export function ReDetectNovelImport(arg1) {
   return window['go']['main']['App']['ReDetectNovelImport'](arg1);
+}
+
+export function RemoveBookFromLibrary(arg1) {
+  return window['go']['main']['App']['RemoveBookFromLibrary'](arg1);
 }
 
 export function SaveChapterContent(arg1) {
