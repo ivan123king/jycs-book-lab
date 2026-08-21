@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // ReadingWorkbenchPage.vue 负责当前书阅读、正文编辑、选文来源捕获和方案驱动拆解创建。
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type CSSProperties } from 'vue'
 import {
   NAlert,
   NButton,
@@ -72,6 +72,9 @@ const chapterContextMenuX = ref(0)
 const chapterContextMenuY = ref(0)
 const chapterContextChapter = ref<library.BookChapter | null>(null)
 const selectedSource = ref<CapturedSelection | null>(null)
+const selectedRange = shallowRef<Range | null>(null)
+const selectionToolbarRef = ref<HTMLElement | null>(null)
+const selectionToolbarPosition = ref({ left: 0, top: 0 })
 const deconstructionOpen = ref(false)
 const splitChapterOpen = ref(false)
 const splitChapterSaving = ref(false)
@@ -197,6 +200,11 @@ const nextChapter = computed(() => {
 const editDirty = computed(() => {
   return currentChapter.value ? editTitle.value !== currentChapter.value.title || editContent.value !== chapterContent.value : false
 })
+
+const selectionToolbarStyle = computed<CSSProperties>(() => ({
+  left: `${selectionToolbarPosition.value.left}px`,
+  top: `${selectionToolbarPosition.value.top}px`,
+}))
 
 /**
  * 打开当前书阅读会补齐旧项目缺失的阅读数据文件，并恢复上次阅读位置。
@@ -449,9 +457,14 @@ function captureSelection() {
     return
   }
   const range = selection?.rangeCount ? selection.getRangeAt(0) : null
+  if (!range || !isRangeInsideReader(range)) {
+    clearSelection()
+    return
+  }
   const selectionOffset = range ? getSelectionOffsetInReader(range) : null
   const startOffset = selectionOffset ?? chapterContent.value.indexOf(selectedText)
   const safeStartOffset = startOffset >= 0 ? startOffset : currentCharOffset.value
+  selectedRange.value = range.cloneRange()
   selectedSource.value = {
     chapterId: currentChapter.value.id,
     chapterOrder: currentChapter.value.order,
@@ -459,6 +472,10 @@ function captureSelection() {
     endOffset: safeStartOffset + selectedText.length,
     selectedText,
   }
+  updateSelectionToolbar(range)
+  nextTick(() => {
+    updateSelectionToolbar(selectedRange.value)
+  })
 }
 
 async function copySelection() {
@@ -574,18 +591,64 @@ function updateSessionChapter(chapter: library.BookChapter) {
 
 function clearSelection() {
   selectedSource.value = null
+  selectedRange.value = null
   window.getSelection()?.removeAllRanges()
 }
 
 function getSelectionOffsetInReader(range: Range) {
   const contentElement = readerContentRef.value
-  if (!contentElement || !contentElement.contains(range.commonAncestorContainer)) {
+  if (!contentElement || !isRangeInsideReader(range)) {
     return null
   }
   const prefixRange = range.cloneRange()
   prefixRange.selectNodeContents(contentElement)
   prefixRange.setEnd(range.startContainer, range.startOffset)
   return prefixRange.toString().length
+}
+
+function isRangeInsideReader(range: Range) {
+  const contentElement = readerContentRef.value
+  return Boolean(contentElement && contentElement.contains(range.commonAncestorContainer))
+}
+
+function getSelectionRect(range: Range) {
+  const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0)
+  if (rects.length === 0) {
+    const fallbackRect = range.getBoundingClientRect()
+    return fallbackRect.width > 0 && fallbackRect.height > 0 ? fallbackRect : null
+  }
+  const left = Math.min(...rects.map((rect) => rect.left))
+  const top = Math.min(...rects.map((rect) => rect.top))
+  const right = Math.max(...rects.map((rect) => rect.right))
+  const bottom = Math.max(...rects.map((rect) => rect.bottom))
+  return { left, top, right, bottom, width: right - left, height: bottom - top }
+}
+
+function updateSelectionToolbar(range: Range | null) {
+  const scrollElement = readerScrollRef.value
+  if (!scrollElement || !range || !isRangeInsideReader(range)) {
+    return
+  }
+  const selectionRect = getSelectionRect(range)
+  if (!selectionRect) {
+    return
+  }
+  const containerRect = scrollElement.getBoundingClientRect()
+  const toolbarWidth = selectionToolbarRef.value?.offsetWidth ?? 170
+  const toolbarHeight = selectionToolbarRef.value?.offsetHeight ?? 42
+  const gap = 10
+  const edgeGap = 8
+  const minLeft = scrollElement.scrollLeft + toolbarWidth / 2 + edgeGap
+  const maxLeft = scrollElement.scrollLeft + scrollElement.clientWidth - toolbarWidth / 2 - edgeGap
+  const rawLeft = selectionRect.left + selectionRect.width / 2 - containerRect.left + scrollElement.scrollLeft
+  const aboveTop = selectionRect.top - containerRect.top + scrollElement.scrollTop - toolbarHeight - gap
+  const belowTop = selectionRect.bottom - containerRect.top + scrollElement.scrollTop + gap
+  const rawTop = aboveTop >= scrollElement.scrollTop + edgeGap ? aboveTop : belowTop
+  const maxTop = scrollElement.scrollHeight - toolbarHeight - edgeGap
+  selectionToolbarPosition.value = {
+    left: clampNumber(rawLeft, minLeft, Math.max(minLeft, maxLeft)),
+    top: clampNumber(rawTop, edgeGap, Math.max(edgeGap, maxTop)),
+  }
 }
 
 function handleReaderScroll() {
@@ -663,6 +726,13 @@ function clampPercent(value: number) {
     return 0
   }
   return Math.min(100, Math.max(0, value))
+}
+
+function clampNumber(value: number, minValue: number, maxValue: number) {
+  if (!Number.isFinite(value)) {
+    return minValue
+  }
+  return Math.min(maxValue, Math.max(minValue, value))
 }
 
 function chapterCardCount(chapterId: string) {
@@ -766,7 +836,15 @@ onBeforeUnmount(() => {
               </div>
               <div v-else ref="readerContentRef" class="reader-content-text">{{ chapterContent }}</div>
 
-              <div v-if="selectedSource" class="floating-toolbar">
+              <div
+                v-if="selectedSource"
+                ref="selectionToolbarRef"
+                class="floating-toolbar"
+                :style="selectionToolbarStyle"
+                @mousedown.prevent.stop
+                @mouseup.stop
+                @click.stop
+              >
                 <n-button size="small" type="primary" @click="openDeconstructionDialog">
                   <template #icon>
                     <Highlighter :size="14" />
