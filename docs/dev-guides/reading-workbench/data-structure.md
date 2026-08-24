@@ -14,7 +14,8 @@ books/{bookId}/
 │   ├── chapter-000001.txt
 │   └── chapter-000302.txt
 ├── reading/
-│   └── reading-state.json
+│   ├── reading-state.json
+│   └── chapter-memos.json
 ├── source-texts/
 │   └── source-texts.json
 └── deconstructions/
@@ -25,9 +26,10 @@ books/{bookId}/
 
 1. `chapters/` 保存用户修正后的章节正文 TXT。
 2. `reading/reading-state.json` 保存当前书阅读位置。
-3. `source-texts/source-texts.json` 保存选文来源片段的结构化位置。
-4. `deconstructions/deconstruction-cards.json` 保存拆解卡片结构化数据。
-5. 如果某个拆解或素材包含需要直接阅读的长文本，应额外保存为 TXT，并在 JSON 中记录相对路径。
+3. `reading/chapter-memos.json` 保存章节级自由小记。
+4. `source-texts/source-texts.json` 保存选文来源片段的结构化位置。
+5. `deconstructions/deconstruction-cards.json` 保存拆解卡片结构化数据。
+6. 如果某个拆解或素材包含需要直接阅读的长文本，应额外保存为 TXT，并在 JSON 中记录相对路径。
 
 ## 阅读状态
 
@@ -101,6 +103,37 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 
 目录页状态属于页面交互状态，除非后续有明确体验要求，否则不需要写入正式数据文件。
 
+## 章节小记
+
+`reading/chapter-memos.json` 保存用户在目录项旁创建的章节级自由小记。小记属于当前小说项目目录，复制小说目录即可迁移。
+
+示例：
+
+```json
+{
+  "version": 1,
+  "items": [
+    {
+      "bookId": "book-20260821-001",
+      "chapterId": "chapter-000302",
+      "chapterOrder": 302,
+      "content": "　　这一章可以记录主角第一次主动回避冲突的写法。",
+      "createdAt": "2026-08-21T10:32:00+08:00",
+      "updatedAt": "2026-08-21T10:35:00+08:00"
+    }
+  ]
+}
+```
+
+字段原则：
+
+1. `bookId`、`chapterId` 和 `chapterOrder` 用于把小记绑定到具体书籍和章节。
+2. `content` 保存用户自由输入的小记内容，可包含 Tab 键触发的中文首行缩进。
+3. 小记是章节级内容，不保存原文选区偏移；需要精确来源追溯时，应通过选中文字创建拆解卡片。
+4. 同一章节第一阶段只保留一条小记；再次保存覆盖原内容并更新 `updatedAt`。
+5. 保存空内容时应移除该章节小记，避免目录误显示“已有小记”。
+6. 打开旧小说项目时，如果缺少 `reading/chapter-memos.json`，应创建空集合，不阻断阅读。
+
 ## 目录拆分章节
 
 目录拆分章节会修改单本小说项目目录中的正式章节数据。
@@ -111,6 +144,7 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 2. `chapters/{chapterId}.txt`：新增拆出的章节 TXT，并覆盖当前章节 TXT 为剩余正文。
 3. `reading/reading-state.json`：如果最近阅读位置在被拆章节上，保存到剩余章节的开头；如果在后续章节上，章节序号后移。
 4. `source-texts/source-texts.json`：后续章节的 `chapterOrder` 后移，保证来源摘要仍指向正确章节顺序。
+5. `reading/chapter-memos.json`：被拆章节的小记继续归属保留原 `chapterId` 的剩余章节；后续章节小记的 `chapterOrder` 后移。
 
 第一阶段拆分模型：
 
@@ -235,6 +269,7 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 1. 如果旧小说目录没有 `reading/reading-state.json`，打开第一章第一处内容，并在首次保存阅读位置时创建文件。
 2. 如果旧阅读状态没有 `readingProgressPercent`，读取书库或阅读工作台时按 `book.json` 章节字数和 `lastPosition` 估算，不应阻断打开。
 3. 如果旧阅读状态没有 `preferences.fontSize`，打开时使用默认字号 18，用户调整或保存阅读状态时写回。
-4. 如果旧拆解卡片没有 `sourceTextId`，迁移时应根据旧的书籍、章节、原文位置创建 `SourceText`。
-5. 如果 `source-texts.json` 损坏，应提示用户修复或从拆解卡片中的来源快照重建。
-6. 如果 SQLite 索引损坏，删除缓存后必须能从 `book.json`、章节 TXT、阅读状态、原文片段和拆解 JSON 重建索引。
+4. 如果旧小说目录没有 `reading/chapter-memos.json`，打开阅读工作台时创建空集合。
+5. 如果旧拆解卡片没有 `sourceTextId`，迁移时应根据旧的书籍、章节、原文位置创建 `SourceText`。
+6. 如果 `source-texts.json` 损坏，应提示用户修复或从拆解卡片中的来源快照重建。
+7. 如果 SQLite 索引损坏，删除缓存后必须能从 `book.json`、章节 TXT、阅读状态、章节小记、原文片段和拆解 JSON 重建索引。

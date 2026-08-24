@@ -14,6 +14,7 @@ import (
 
 const (
 	readingStateRelativePath        = "reading/reading-state.json"
+	chapterMemosRelativePath        = "reading/chapter-memos.json"
 	sourceTextsRelativePath         = "source-texts/source-texts.json"
 	deconstructionCardsRelativePath = "deconstructions/deconstruction-cards.json"
 	deconstructionPlanRelativePath  = "deconstruction-plan.json"
@@ -61,6 +62,10 @@ func OpenReadingSession(bookPath string) (ReadingSession, error) {
 	if err != nil {
 		return ReadingSession{}, err
 	}
+	chapterMemos, err := loadChapterMemos(bookPath)
+	if err != nil {
+		return ReadingSession{}, err
+	}
 
 	state.LastPosition.ChapterID = currentChapter.ID
 	state.LastPosition.ChapterOrder = currentChapter.Order
@@ -72,6 +77,7 @@ func OpenReadingSession(bookPath string) (ReadingSession, error) {
 		Plan:                plan,
 		SourceTexts:         sourceTexts,
 		DeconstructionCards: cards,
+		ChapterMemos:        chapterMemos,
 	}, nil
 }
 
@@ -383,6 +389,63 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	}, nil
 }
 
+// SaveChapterMemo 保存或清空章节目录中的自由小记，正式数据写入单本小说项目目录。
+func SaveChapterMemo(request SaveChapterMemoRequest) (SaveChapterMemoResult, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return SaveChapterMemoResult{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureReadingSupportFiles(bookPath, project); err != nil {
+		return SaveChapterMemoResult{}, err
+	}
+	chapter, ok := findChapterByID(project, request.ChapterID)
+	if !ok {
+		return SaveChapterMemoResult{}, fmt.Errorf("未找到章节: %s", request.ChapterID)
+	}
+	collection, err := loadChapterMemos(bookPath)
+	if err != nil {
+		return SaveChapterMemoResult{}, err
+	}
+
+	now := time.Now().Format(time.RFC3339)
+	memoIndex := -1
+	for index := range collection.Items {
+		if collection.Items[index].BookID == project.Book.ID && collection.Items[index].ChapterID == chapter.ID {
+			memoIndex = index
+			break
+		}
+	}
+	memo := ChapterMemo{
+		BookID:       project.Book.ID,
+		ChapterID:    chapter.ID,
+		ChapterOrder: chapter.Order,
+		Content:      request.Content,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if memoIndex >= 0 {
+		memo.CreatedAt = collection.Items[memoIndex].CreatedAt
+		if strings.TrimSpace(request.Content) == "" {
+			collection.Items = append(collection.Items[:memoIndex], collection.Items[memoIndex+1:]...)
+		} else {
+			collection.Items[memoIndex] = memo
+		}
+	} else if strings.TrimSpace(request.Content) != "" {
+		collection.Items = append(collection.Items, memo)
+	}
+	sort.SliceStable(collection.Items, func(i, j int) bool {
+		if collection.Items[i].ChapterOrder != collection.Items[j].ChapterOrder {
+			return collection.Items[i].ChapterOrder < collection.Items[j].ChapterOrder
+		}
+		return collection.Items[i].UpdatedAt < collection.Items[j].UpdatedAt
+	})
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath)), collection); err != nil {
+		return SaveChapterMemoResult{}, fmt.Errorf("保存章节小记失败: %w", err)
+	}
+	return SaveChapterMemoResult{Memo: memo, ChapterMemos: collection}, nil
+}
+
 // OpenDeconstructionPlanWorkspace 读取当前书的当前模板引用和可编辑模板列表。
 func OpenDeconstructionPlanWorkspace(bookPath string) (DeconstructionPlanWorkspace, error) {
 	project, err := OpenBookProject(bookPath)
@@ -565,6 +628,11 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 	}
 	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath))); errors.Is(err, os.ErrNotExist) {
 		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), DeconstructionCardCollection{Version: 1, Items: []DeconstructionCard{}}); err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath))); errors.Is(err, os.ErrNotExist) {
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath)), ChapterMemoCollection{Version: 1, Items: []ChapterMemo{}}); err != nil {
 			return err
 		}
 	}
@@ -1179,6 +1247,20 @@ func loadDeconstructionCards(bookPath string) (DeconstructionCardCollection, err
 	return collection, nil
 }
 
+func loadChapterMemos(bookPath string) (ChapterMemoCollection, error) {
+	collection := ChapterMemoCollection{Version: 1, Items: []ChapterMemo{}}
+	if err := readJSONFile(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath)), &collection); err != nil {
+		return collection, fmt.Errorf("读取章节小记失败: %w", err)
+	}
+	if collection.Version == 0 {
+		collection.Version = 1
+	}
+	if collection.Items == nil {
+		collection.Items = []ChapterMemo{}
+	}
+	return collection, nil
+}
+
 func ensureChapterHasNoSourceTexts(bookPath string, chapterID string) error {
 	sourceTexts, err := loadSourceTexts(bookPath)
 	if err != nil {
@@ -1235,6 +1317,30 @@ func syncPersistedChapterOrdersAfterSplit(bookPath string, splitOrder int, split
 		}
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("读取选文来源用于章节拆分失败: %w", err)
+	}
+
+	chapterMemosPath := filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath))
+	memos := ChapterMemoCollection{Version: 1}
+	if err := readOptionalJSONFile(chapterMemosPath, &memos); err == nil && memos.Items != nil {
+		changed := false
+		for index := range memos.Items {
+			if memos.Items[index].ChapterID == splitChapterID {
+				memos.Items[index].ChapterOrder = remainingChapter.Order
+				changed = true
+				continue
+			}
+			if memos.Items[index].ChapterOrder > splitOrder {
+				memos.Items[index].ChapterOrder++
+				changed = true
+			}
+		}
+		if changed {
+			if err := writeJSONFileAtomic(chapterMemosPath, memos); err != nil {
+				return fmt.Errorf("同步章节小记序号失败: %w", err)
+			}
+		}
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("读取章节小记用于章节拆分失败: %w", err)
 	}
 	return nil
 }

@@ -32,6 +32,8 @@ export function RemoveBookFromLibrary(arg1:string):Promise<library.LibraryState>
 
 export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
 
+export function SaveChapterMemo(arg1:library.SaveChapterMemoRequest):Promise<library.SaveChapterMemoResult>;
+
 export function SaveDeconstructionPlan(arg1:library.SaveDeconstructionPlanRequest):Promise<library.DeconstructionPlanWorkspace>;
 
 export function SaveDeconstructionTemplate(arg1:library.SaveDeconstructionTemplateRequest):Promise<library.DeconstructionPlanWorkspace>;

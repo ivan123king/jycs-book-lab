@@ -249,6 +249,22 @@ type DeconstructionCardCollection struct {
 	Items   []DeconstructionCard `json:"items"`
 }
 
+// ChapterMemo 保存用户针对单个章节写下的自由小记，随小说项目目录迁移。
+type ChapterMemo struct {
+	BookID       string `json:"bookId"`
+	ChapterID    string `json:"chapterId"`
+	ChapterOrder int    `json:"chapterOrder"`
+	Content      string `json:"content"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
+}
+
+// ChapterMemoCollection 对应 reading/chapter-memos.json。
+type ChapterMemoCollection struct {
+	Version int           `json:"version"`
+	Items   []ChapterMemo `json:"items"`
+}
+
 // ReadingSession 是前端打开阅读工作台所需的当前书完整上下文。
 type ReadingSession struct {
 	Project             BookProject                  `json:"project"`
@@ -258,6 +274,7 @@ type ReadingSession struct {
 	Plan                DeconstructionPlan           `json:"plan"`
 	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+	ChapterMemos        ChapterMemoCollection        `json:"chapterMemos"`
 }
 
 // ChapterContentRequest 指定要读取的单本书章节正文。
@@ -341,4 +358,17 @@ type CreateDeconstructionResult struct {
 	Card                DeconstructionCard           `json:"card"`
 	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// SaveChapterMemoRequest 保存目录中某章的小记内容。
+type SaveChapterMemoRequest struct {
+	BookPath  string `json:"bookPath"`
+	ChapterID string `json:"chapterId"`
+	Content   string `json:"content"`
+}
+
+// SaveChapterMemoResult 返回保存后的当前章节小记和完整小记集合。
+type SaveChapterMemoResult struct {
+	Memo         ChapterMemo           `json:"memo"`
+	ChapterMemos ChapterMemoCollection `json:"chapterMemos"`
 }

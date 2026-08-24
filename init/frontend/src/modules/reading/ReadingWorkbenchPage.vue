@@ -19,13 +19,14 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw, Save, Type } from 'lucide-vue-next'
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw, Save, StickyNote, Type } from 'lucide-vue-next'
 import {
   CreateDeconstructionCard,
   GetChapterContent,
   OpenLastReadingSession,
   OpenReadingSession,
   SaveChapterContent,
+  SaveChapterMemo,
   SaveReadingPreferences,
   SaveReadingPosition,
   SplitChapterFromStart,
@@ -82,6 +83,12 @@ const splitChapterSaving = ref(false)
 const splitChapterError = ref('')
 const splitTargetChapter = ref<library.BookChapter | null>(null)
 const splitForm = ref({ newTitle: '', newContent: '', remainingContent: '' })
+const chapterMemoOpen = ref(false)
+const chapterMemoSaving = ref(false)
+const chapterMemoError = ref('')
+const chapterMemoNotice = ref('')
+const chapterMemoTarget = ref<library.BookChapter | null>(null)
+const chapterMemoContent = ref('')
 const selectedPlanTypeId = ref('')
 const selectedDimensionId = ref('')
 const deconstructionContent = ref('')
@@ -175,6 +182,16 @@ const deconstructionCountByChapter = computed(() => {
     counts.set(source.chapterId, (counts.get(source.chapterId) ?? 0) + 1)
   }
   return counts
+})
+
+const chapterMemoByChapter = computed(() => {
+  const map = new Map<string, library.ChapterMemo>()
+  for (const memo of session.value?.chapterMemos?.items ?? []) {
+    if (memo.content.trim()) {
+      map.set(memo.chapterId, memo)
+    }
+  }
+  return map
 })
 
 const filteredCatalogChapters = computed(() => {
@@ -395,6 +412,40 @@ async function openSplitChapterDialog(chapter: library.BookChapter) {
   }
 }
 
+function openChapterMemoDialog(chapter: library.BookChapter) {
+  const memo = chapterMemoByChapter.value.get(chapter.id)
+  chapterMemoTarget.value = chapter
+  chapterMemoContent.value = memo?.content ?? ''
+  chapterMemoError.value = ''
+  chapterMemoNotice.value = ''
+  chapterMemoOpen.value = true
+}
+
+async function saveChapterMemo() {
+  const bookPath = activeBookPath.value
+  if (!bookPath || !chapterMemoTarget.value) {
+    return
+  }
+  chapterMemoSaving.value = true
+  chapterMemoError.value = ''
+  chapterMemoNotice.value = ''
+  try {
+    const result = await SaveChapterMemo({
+      bookPath,
+      chapterId: chapterMemoTarget.value.id,
+      content: chapterMemoContent.value,
+    })
+    if (session.value) {
+      session.value.chapterMemos = result.chapterMemos
+    }
+    chapterMemoNotice.value = chapterMemoContent.value.trim() ? '小记已保存。' : '小记已清空。'
+  } catch (error) {
+    chapterMemoError.value = getErrorMessage(error)
+  } finally {
+    chapterMemoSaving.value = false
+  }
+}
+
 async function saveSplitChapter() {
   const bookPath = activeBookPath.value
   if (!bookPath || !splitTargetChapter.value) {
@@ -591,31 +642,55 @@ function discardChapterEdit() {
  * 在章节正文编辑区拦截 Tab，按中文正文习惯给当前行或选中行设置首行缩进。
  */
 function handleChapterContentKeydown(event: KeyboardEvent) {
+  handleTextareaIndentKeydown(event, editContent.value, (nextValue) => {
+    editContent.value = nextValue
+    editNotice.value = ''
+  })
+}
+
+/**
+ * 在章节小记编辑区拦截 Tab，保持与章节正文一致的中文首行缩进体验。
+ */
+function handleChapterMemoKeydown(event: KeyboardEvent) {
+  handleTextareaIndentKeydown(event, chapterMemoContent.value, (nextValue) => {
+    chapterMemoContent.value = nextValue
+    chapterMemoNotice.value = ''
+  })
+}
+
+function handleTextareaIndentKeydown(
+  event: KeyboardEvent,
+  content: string,
+  updateContent: (nextValue: string) => void,
+) {
   if (event.key !== 'Tab' || !(event.target instanceof HTMLTextAreaElement)) {
     return
   }
   event.preventDefault()
   event.stopPropagation()
-  editNotice.value = ''
   if (event.shiftKey) {
-    outdentChapterContentSelection(event.target)
+    outdentTextareaSelection(event.target, content, updateContent)
     return
   }
-  indentChapterContentSelection(event.target)
+  indentTextareaSelection(event.target, content, updateContent)
 }
 
-function indentChapterContentSelection(textarea: HTMLTextAreaElement) {
+function indentTextareaSelection(
+  textarea: HTMLTextAreaElement,
+  content: string,
+  updateContent: (nextValue: string) => void,
+) {
   const { selectionStart, selectionEnd } = textarea
-  const lineStarts = getSelectedLineStarts(editContent.value, selectionStart, selectionEnd)
+  const lineStarts = getSelectedLineStarts(content, selectionStart, selectionEnd)
   const nextValue = lineStarts
     .slice()
     .reverse()
     .reduce(
       (content, lineStart) =>
         `${content.slice(0, lineStart)}${chineseParagraphIndent}${content.slice(lineStart)}`,
-      editContent.value,
+      content,
     )
-  editContent.value = nextValue
+  updateContent(nextValue)
   restoreTextareaSelection(
     textarea,
     adjustPositionAfterInsertions(selectionStart, lineStarts),
@@ -623,12 +698,16 @@ function indentChapterContentSelection(textarea: HTMLTextAreaElement) {
   )
 }
 
-function outdentChapterContentSelection(textarea: HTMLTextAreaElement) {
+function outdentTextareaSelection(
+  textarea: HTMLTextAreaElement,
+  content: string,
+  updateContent: (nextValue: string) => void,
+) {
   const { selectionStart, selectionEnd } = textarea
-  const removals = getSelectedLineStarts(editContent.value, selectionStart, selectionEnd)
+  const removals = getSelectedLineStarts(content, selectionStart, selectionEnd)
     .map((lineStart) => ({
       start: lineStart,
-      length: getLineIndentLength(editContent.value, lineStart),
+      length: getLineIndentLength(content, lineStart),
     }))
     .filter((removal) => removal.length > 0)
   if (removals.length === 0) {
@@ -640,9 +719,9 @@ function outdentChapterContentSelection(textarea: HTMLTextAreaElement) {
     .reduce(
       (content, removal) =>
         `${content.slice(0, removal.start)}${content.slice(removal.start + removal.length)}`,
-      editContent.value,
+      content,
     )
-  editContent.value = nextValue
+  updateContent(nextValue)
   restoreTextareaSelection(
     textarea,
     adjustPositionAfterRemovals(selectionStart, removals),
@@ -885,6 +964,10 @@ function chapterCardCount(chapterId: string) {
   return deconstructionCountByChapter.value.get(chapterId) ?? 0
 }
 
+function hasChapterMemo(chapterId: string) {
+  return Boolean(chapterMemoByChapter.value.get(chapterId))
+}
+
 function emitReadingSummary() {
   nextTick(() => {
     emit('readingUpdated', readingProgressText.value)
@@ -1078,17 +1161,39 @@ onBeforeUnmount(() => {
         </div>
         <n-input v-model:value="catalogSearch" clearable placeholder="搜索章节标题" class="catalog-search" />
         <n-scrollbar style="max-height: calc(100vh - 250px)">
-          <button
-            v-for="chapter in catalogPageChapters"
-            :key="chapter.id"
-            class="chapter-item"
-            :class="{ active: currentChapter?.id === chapter.id }"
-            @contextmenu.prevent.stop="openChapterContextMenu($event, chapter)"
-            @click="jumpToChapter(chapter)"
-          >
-            <span>{{ chapter.title }}</span>
-            <small>第 {{ chapter.order }} 章 · {{ chapterCardCount(chapter.id) }} 张卡片 · 右键可拆分</small>
-          </button>
+          <div class="catalog-list-inner">
+            <div
+              v-for="chapter in catalogPageChapters"
+              :key="chapter.id"
+              class="chapter-item"
+              :class="{ active: currentChapter?.id === chapter.id }"
+              role="button"
+              tabindex="0"
+              @contextmenu.prevent.stop="openChapterContextMenu($event, chapter)"
+              @click="jumpToChapter(chapter)"
+              @keydown.enter.prevent="jumpToChapter(chapter)"
+              @keydown.space.prevent="jumpToChapter(chapter)"
+            >
+              <div class="chapter-item-head">
+                <span>{{ chapter.title }}</span>
+                <n-button
+                  size="tiny"
+                  quaternary
+                  class="chapter-memo-button"
+                  :type="hasChapterMemo(chapter.id) ? 'primary' : 'default'"
+                  @click.stop="openChapterMemoDialog(chapter)"
+                  @keydown.stop
+                >
+                  小记
+                </n-button>
+              </div>
+              <small>
+                第 {{ chapter.order }} 章 · {{ chapterCardCount(chapter.id) }} 张卡片
+                <span v-if="hasChapterMemo(chapter.id)"> · 已有小记</span>
+                · 右键可拆分
+              </small>
+            </div>
+          </div>
         </n-scrollbar>
         <div class="catalog-actions">
           <n-button :disabled="catalogPage <= 1" @click="catalogPage -= 1">上一目录页</n-button>
@@ -1107,6 +1212,38 @@ onBeforeUnmount(() => {
       @select="handleChapterContextSelect"
       @clickoutside="closeChapterContextMenu"
     />
+
+    <n-modal
+      v-model:show="chapterMemoOpen"
+      preset="card"
+      :title="`小记 · ${chapterMemoTarget?.title ?? '未选择章节'}`"
+      class="chapter-memo-modal"
+      :bordered="false"
+    >
+      <n-alert v-if="chapterMemoError" type="error" class="reader-inline-alert split-inline-alert">
+        {{ chapterMemoError }}
+      </n-alert>
+      <n-alert v-else-if="chapterMemoNotice" type="success" class="reader-inline-alert split-inline-alert">
+        {{ chapterMemoNotice }}
+      </n-alert>
+      <n-input
+        v-model:value="chapterMemoContent"
+        type="textarea"
+        :autosize="{ minRows: 12, maxRows: 18 }"
+        @keydown="handleChapterMemoKeydown"
+      />
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="chapterMemoOpen = false">关闭</n-button>
+          <n-button type="primary" :loading="chapterMemoSaving" @click="saveChapterMemo">
+            <template #icon>
+              <Save :size="16" />
+            </template>
+            保存小记
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
 
     <n-modal
       v-model:show="splitChapterOpen"

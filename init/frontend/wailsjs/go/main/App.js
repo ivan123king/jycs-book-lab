@@ -62,6 +62,10 @@ export function SaveChapterContent(arg1) {
   return window['go']['main']['App']['SaveChapterContent'](arg1);
 }
 
+export function SaveChapterMemo(arg1) {
+  return window['go']['main']['App']['SaveChapterMemo'](arg1);
+}
+
 export function SaveDeconstructionPlan(arg1) {
   return window['go']['main']['App']['SaveDeconstructionPlan'](arg1);
 }

@@ -646,6 +646,25 @@ func shiftPersistedChapterOrdersAfterLeadingRecovery(bookPath string, prefixID s
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("读取选文来源用于迁移失败: %w", err)
 	}
+
+	chapterMemosPath := filepath.Join(bookPath, "reading", "chapter-memos.json")
+	memos := ChapterMemoCollection{Version: 1}
+	if err := readOptionalJSONFile(chapterMemosPath, &memos); err == nil && memos.Items != nil {
+		changed := false
+		for index := range memos.Items {
+			if memos.Items[index].ChapterID != prefixID && memos.Items[index].ChapterOrder > 0 {
+				memos.Items[index].ChapterOrder++
+				changed = true
+			}
+		}
+		if changed {
+			if err := writeJSONFileAtomic(chapterMemosPath, memos); err != nil {
+				return fmt.Errorf("同步章节小记序号失败: %w", err)
+			}
+		}
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("读取章节小记用于迁移失败: %w", err)
+	}
 	return nil
 }
 

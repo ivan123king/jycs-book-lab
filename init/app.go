@@ -37,12 +37,16 @@ type SourceText = booklibrary.SourceText
 type SourceTextCollection = booklibrary.SourceTextCollection
 type DeconstructionCard = booklibrary.DeconstructionCard
 type DeconstructionCardCollection = booklibrary.DeconstructionCardCollection
+type ChapterMemo = booklibrary.ChapterMemo
+type ChapterMemoCollection = booklibrary.ChapterMemoCollection
 type ReadingSession = booklibrary.ReadingSession
 type ChapterContentRequest = booklibrary.ChapterContentRequest
 type ChapterContentResult = booklibrary.ChapterContentResult
 type SaveReadingPositionRequest = booklibrary.SaveReadingPositionRequest
 type SaveReadingPreferencesRequest = booklibrary.SaveReadingPreferencesRequest
 type SaveChapterContentRequest = booklibrary.SaveChapterContentRequest
+type SaveChapterMemoRequest = booklibrary.SaveChapterMemoRequest
+type SaveChapterMemoResult = booklibrary.SaveChapterMemoResult
 type SplitChapterRequest = booklibrary.SplitChapterRequest
 type SplitChapterResult = booklibrary.SplitChapterResult
 type SourceSelection = booklibrary.SourceSelection
@@ -223,6 +227,11 @@ func (a *App) SaveReadingPreferences(request SaveReadingPreferencesRequest) (Rea
 // SaveChapterContent 保存编辑 TAB 中的章节标题和正文。
 func (a *App) SaveChapterContent(request SaveChapterContentRequest) (ChapterContentResult, error) {
 	return booklibrary.SaveChapterContent(request)
+}
+
+// SaveChapterMemo 保存章节目录中的小记内容。
+func (a *App) SaveChapterMemo(request SaveChapterMemoRequest) (SaveChapterMemoResult, error) {
+	return booklibrary.SaveChapterMemo(request)
 }
 
 // SplitChapterFromStart 从目录中的当前章节开头拆出新章节，并保存更新后的章节目录。

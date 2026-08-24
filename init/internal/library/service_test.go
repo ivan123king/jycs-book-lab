@@ -299,8 +299,12 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if session.State.Preferences.FontSize != defaultReaderFontSize {
 		t.Fatalf("默认阅读字号 = %d, want %d", session.State.Preferences.FontSize, defaultReaderFontSize)
 	}
+	if len(session.ChapterMemos.Items) != 0 {
+		t.Fatalf("默认章节小记数量 = %d, want 0", len(session.ChapterMemos.Items))
+	}
 	for _, requiredPath := range []string{
 		filepath.Join(bookPath, "reading", "reading-state.json"),
+		filepath.Join(bookPath, "reading", "chapter-memos.json"),
 		filepath.Join(bookPath, "source-texts", "source-texts.json"),
 		filepath.Join(bookPath, "deconstructions", "deconstruction-cards.json"),
 		filepath.Join(bookPath, "deconstruction-plan.json"),
@@ -340,6 +344,20 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if preferenceState.Preferences.FontSize != 22 {
 		t.Fatalf("阅读字号 = %d, want 22", preferenceState.Preferences.FontSize)
 	}
+	memoResult, err := SaveChapterMemo(SaveChapterMemoRequest{
+		BookPath:  bookPath,
+		ChapterID: "chapter-000002",
+		Content:   "　　这一章可以记录人物进入新场景后的防备感。",
+	})
+	if err != nil {
+		t.Fatalf("保存章节小记失败: %v", err)
+	}
+	if len(memoResult.ChapterMemos.Items) != 1 {
+		t.Fatalf("章节小记数量 = %d, want 1", len(memoResult.ChapterMemos.Items))
+	}
+	if memoResult.Memo.ChapterID != "chapter-000002" || memoResult.Memo.ChapterOrder != 2 {
+		t.Fatalf("章节小记来源不正确: %+v", memoResult.Memo)
+	}
 	progressIndex := enrichLibraryReadingProgress(LibraryIndex{
 		Version: 1,
 		Books: []LibraryBookEntry{
@@ -358,6 +376,9 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 	if restoredSession.State.Preferences.FontSize != 22 {
 		t.Fatalf("恢复阅读字号 = %d, want 22", restoredSession.State.Preferences.FontSize)
+	}
+	if len(restoredSession.ChapterMemos.Items) != 1 || restoredSession.ChapterMemos.Items[0].Content != "　　这一章可以记录人物进入新场景后的防备感。" {
+		t.Fatalf("恢复章节小记不正确: %+v", restoredSession.ChapterMemos.Items)
 	}
 
 	savedChapter, err := SaveChapterContent(SaveChapterContentRequest{
@@ -408,6 +429,18 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
 		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
+	}
+
+	clearedMemo, err := SaveChapterMemo(SaveChapterMemoRequest{
+		BookPath:  bookPath,
+		ChapterID: "chapter-000002",
+		Content:   "",
+	})
+	if err != nil {
+		t.Fatalf("清空章节小记失败: %v", err)
+	}
+	if len(clearedMemo.ChapterMemos.Items) != 0 {
+		t.Fatalf("清空后章节小记数量 = %d, want 0", len(clearedMemo.ChapterMemos.Items))
 	}
 }
 
