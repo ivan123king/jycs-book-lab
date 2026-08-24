@@ -9,7 +9,6 @@ import {
   defaultCurrentBook,
   demoAnalysisRows,
   demoChapters,
-  demoDeconstructionCards,
   demoMaterials,
 } from '@/data/workbenchFixtures'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
@@ -28,17 +27,25 @@ const activeView = ref<ViewKey>('library')
 const libraryMode = ref<'list' | 'import'>('list')
 const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
 const currentProject = ref<BookProject | null>(null)
+const readingSourceFocus = ref<ReadingSourceFocus | null>(null)
 
 type ApplyCurrentBookOptions = {
   navigateToReading?: boolean
   readingPosition?: string
 }
 
+type ReadingSourceFocus = {
+  chapterId: string
+  sourceTextId: string
+  startOffset: number
+  requestKey: number
+}
+
 const activeTitle = computed(() => {
   const titles: Record<ViewKey, string> = {
     library: '书库',
     reading: '阅读与拆解',
-    deconstructions: '拆解卡片',
+    deconstructions: '写作手法拆解',
     materials: '素材库',
     plan: '拆解方案',
     analysis: '基础分析',
@@ -110,6 +117,19 @@ function updateReadingPosition(summary: string) {
   }
 }
 
+/**
+ * 从拆解卡片详情回到来源章节，requestKey 用来保证重复点击同一来源也会触发阅读页定位。
+ */
+function openReadingSource(payload?: { chapterId: string; sourceTextId: string; startOffset: number }) {
+  if (payload) {
+    readingSourceFocus.value = {
+      ...payload,
+      requestKey: Date.now(),
+    }
+  }
+  activeView.value = 'reading'
+}
+
 function clearCurrentBookIfRemoved(bookPath: string) {
   if (currentProject.value?.book.bookPath !== bookPath) {
     return
@@ -145,13 +165,14 @@ onMounted(restoreLastOpenedBook)
               <ReadingWorkbenchPage
                 v-else-if="activeView === 'reading'"
                 :project="currentProject"
+                :source-focus="readingSourceFocus"
                 @reading-updated="updateReadingPosition"
                 @project-restored="applyCurrentBook"
               />
               <DeconstructionCardsPage
                 v-else-if="activeView === 'deconstructions'"
-                :cards="demoDeconstructionCards"
-                @back-to-source="goTo('reading')"
+                :project="currentProject"
+                @back-to-source="openReadingSource"
               />
               <MaterialsPage
                 v-else-if="activeView === 'materials'"

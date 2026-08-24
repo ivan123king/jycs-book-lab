@@ -14,6 +14,10 @@ export function CreateDeconstructionCard(arg1) {
   return window['go']['main']['App']['CreateDeconstructionCard'](arg1);
 }
 
+export function DeleteDeconstructionCard(arg1) {
+  return window['go']['main']['App']['DeleteDeconstructionCard'](arg1);
+}
+
 export function GetChapterContent(arg1) {
   return window['go']['main']['App']['GetChapterContent'](arg1);
 }
@@ -28,6 +32,10 @@ export function Greet(arg1) {
 
 export function OpenBookProject(arg1) {
   return window['go']['main']['App']['OpenBookProject'](arg1);
+}
+
+export function OpenDeconstructionCardsWorkspace(arg1) {
+  return window['go']['main']['App']['OpenDeconstructionCardsWorkspace'](arg1);
 }
 
 export function OpenDeconstructionPlanWorkspace(arg1) {
@@ -88,4 +96,8 @@ export function SetCurrentDeconstructionTemplate(arg1) {
 
 export function SplitChapterFromStart(arg1) {
   return window['go']['main']['App']['SplitChapterFromStart'](arg1);
+}
+
+export function UpdateDeconstructionCard(arg1) {
+  return window['go']['main']['App']['UpdateDeconstructionCard'](arg1);
 }

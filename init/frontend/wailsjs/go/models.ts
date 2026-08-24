@@ -544,22 +544,6 @@ export namespace library {
 	}
 	
 	
-	export class DeconstructionDimension {
-	    id: string;
-	    name: string;
-	    order: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new DeconstructionDimension(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.order = source["order"];
-	    }
-	}
 	export class DeconstructionField {
 	    id: string;
 	    label: string;
@@ -582,6 +566,22 @@ export namespace library {
 	        this.required = source["required"];
 	        this.visible = source["visible"];
 	        this.options = source["options"];
+	    }
+	}
+	export class DeconstructionDimension {
+	    id: string;
+	    name: string;
+	    order: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionDimension(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.order = source["order"];
 	    }
 	}
 	export class DeconstructionType {
@@ -664,6 +664,45 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeconstructionCardsWorkspace {
+	    project: BookProject;
+	    plan: DeconstructionPlan;
+	    sourceTexts: SourceTextCollection;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionCardsWorkspace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], BookProject);
+	        this.plan = this.convertValues(source["plan"], DeconstructionPlan);
+	        this.sourceTexts = this.convertValues(source["sourceTexts"], SourceTextCollection);
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	export class DeconstructionPlanState {
 	    version: number;
 	    bookId: string;
@@ -742,6 +781,52 @@ export namespace library {
 	}
 	
 	
+	export class DeleteDeconstructionCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteDeconstructionCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	    }
+	}
+	export class DeleteDeconstructionCardResult {
+	    sourceTexts: SourceTextCollection;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteDeconstructionCardResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceTexts = this.convertValues(source["sourceTexts"], SourceTextCollection);
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ImportChapterPreview {
 	    id: string;
 	    order: number;
@@ -1165,6 +1250,60 @@ export namespace library {
 	        this.remainingChapter = this.convertValues(source["remainingChapter"], BookChapter);
 	        this.newContent = source["newContent"];
 	        this.remainingContent = source["remainingContent"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateDeconstructionCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	    planTypeId: string;
+	    dimensionId: string;
+	    content: string;
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDeconstructionCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	        this.planTypeId = source["planTypeId"];
+	        this.dimensionId = source["dimensionId"];
+	        this.content = source["content"];
+	        this.tagIds = source["tagIds"];
+	    }
+	}
+	export class UpdateDeconstructionCardResult {
+	    card: DeconstructionCard;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDeconstructionCardResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.card = this.convertValues(source["card"], DeconstructionCard);
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

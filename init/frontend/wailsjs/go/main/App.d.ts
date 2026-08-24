@@ -8,6 +8,8 @@ export function ConfirmNovelImport(arg1:library.ConfirmImportRequest):Promise<li
 
 export function CreateDeconstructionCard(arg1:library.CreateDeconstructionRequest):Promise<library.CreateDeconstructionResult>;
 
+export function DeleteDeconstructionCard(arg1:library.DeleteDeconstructionCardRequest):Promise<library.DeleteDeconstructionCardResult>;
+
 export function GetChapterContent(arg1:library.ChapterContentRequest):Promise<library.ChapterContentResult>;
 
 export function GetLibraryState():Promise<library.LibraryState>;
@@ -15,6 +17,8 @@ export function GetLibraryState():Promise<library.LibraryState>;
 export function Greet(arg1:string):Promise<string>;
 
 export function OpenBookProject(arg1:string):Promise<library.BookProject>;
+
+export function OpenDeconstructionCardsWorkspace(arg1:string):Promise<library.DeconstructionCardsWorkspace>;
 
 export function OpenDeconstructionPlanWorkspace(arg1:string):Promise<library.DeconstructionPlanWorkspace>;
 
@@ -45,3 +49,5 @@ export function SaveReadingPreferences(arg1:library.SaveReadingPreferencesReques
 export function SetCurrentDeconstructionTemplate(arg1:library.SetCurrentDeconstructionTemplateRequest):Promise<library.DeconstructionPlanWorkspace>;
 
 export function SplitChapterFromStart(arg1:library.SplitChapterRequest):Promise<library.SplitChapterResult>;
+
+export function UpdateDeconstructionCard(arg1:library.UpdateDeconstructionCardRequest):Promise<library.UpdateDeconstructionCardResult>;

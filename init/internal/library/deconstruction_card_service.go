@@ -1,4 +1,4 @@
-// deconstruction_card_service.go 负责选文来源片段和拆解卡片的创建与读取。
+// deconstruction_card_service.go 负责选文来源片段和写作手法拆解卡片的创建、读取和维护。
 package library
 
 import (
@@ -9,7 +9,37 @@ import (
 	"time"
 )
 
-// CreateDeconstructionCard 从当前选文创建拆解卡片；同一来源片段允许被多张卡片引用。
+// OpenDeconstructionCardsWorkspace 读取写作手法拆解管理页所需的当前书卡片和来源片段。
+func OpenDeconstructionCardsWorkspace(bookPath string) (DeconstructionCardsWorkspace, error) {
+	project, err := OpenBookProject(bookPath)
+	if err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	bookPath = projectRootPath(bookPath)
+	if err := ensureReadingSupportFiles(bookPath, project); err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	plan, err := loadDeconstructionPlan(bookPath, project.Book.ID)
+	if err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	sourceTexts, err := loadSourceTexts(bookPath)
+	if err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	cards, err := loadDeconstructionCards(bookPath)
+	if err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	return DeconstructionCardsWorkspace{
+		Project:             project,
+		Plan:                plan,
+		SourceTexts:         sourceTexts,
+		DeconstructionCards: cards,
+	}, nil
+}
+
+// CreateDeconstructionCard 从当前选文创建写作手法拆解卡片；同一来源片段允许被多张卡片引用。
 func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDeconstructionResult, error) {
 	project, err := OpenBookProject(request.BookPath)
 	if err != nil {
@@ -72,10 +102,10 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	}
 
 	card := DeconstructionCard{
-		ID:            nextSequentialID("deconstruction", len(cards.Items)+1),
+		ID:            nextSequentialID("writing-technique", len(cards.Items)+1),
 		BookID:        project.Book.ID,
 		SourceTextID:  sourceText.ID,
-		AnalysisKind:  plan.AnalysisKind,
+		AnalysisKind:  analysisKindWritingTechnique,
 		PlanTypeID:    planType.ID,
 		PlanTypeName:  planType.Name,
 		DimensionID:   dimension.ID,
@@ -99,6 +129,104 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	}, nil
 }
 
+// UpdateDeconstructionCard 更新写作手法拆解卡片的类型、维度、正文和标签，不改变来源追溯。
+func UpdateDeconstructionCard(request UpdateDeconstructionCardRequest) (UpdateDeconstructionCardResult, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return UpdateDeconstructionCardResult{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureReadingSupportFiles(bookPath, project); err != nil {
+		return UpdateDeconstructionCardResult{}, err
+	}
+	content := strings.TrimSpace(request.Content)
+	if content == "" {
+		return UpdateDeconstructionCardResult{}, errors.New("拆解看法不能为空")
+	}
+	plan, err := loadDeconstructionPlan(bookPath, project.Book.ID)
+	if err != nil {
+		return UpdateDeconstructionCardResult{}, err
+	}
+	planType, ok := findPlanType(plan, request.PlanTypeID)
+	if !ok {
+		return UpdateDeconstructionCardResult{}, fmt.Errorf("拆解类型不存在: %s", request.PlanTypeID)
+	}
+	dimension, ok := findPlanDimension(planType, request.DimensionID)
+	if !ok {
+		return UpdateDeconstructionCardResult{}, fmt.Errorf("拆解维度不存在: %s", request.DimensionID)
+	}
+	cards, err := loadDeconstructionCards(bookPath)
+	if err != nil {
+		return UpdateDeconstructionCardResult{}, err
+	}
+	for index := range cards.Items {
+		if cards.Items[index].ID != request.CardID {
+			continue
+		}
+		cards.Items[index].PlanTypeID = planType.ID
+		cards.Items[index].PlanTypeName = planType.Name
+		cards.Items[index].DimensionID = dimension.ID
+		cards.Items[index].DimensionName = dimension.Name
+		cards.Items[index].Content = content
+		cards.Items[index].TagIDs = normalizeTags(request.TagIDs)
+		cards.Items[index].UpdatedAt = time.Now().Format(time.RFC3339)
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
+			return UpdateDeconstructionCardResult{}, fmt.Errorf("保存拆解卡片失败: %w", err)
+		}
+		return UpdateDeconstructionCardResult{
+			Card:                cards.Items[index],
+			DeconstructionCards: cards,
+		}, nil
+	}
+	return UpdateDeconstructionCardResult{}, fmt.Errorf("拆解卡片不存在: %s", request.CardID)
+}
+
+// DeleteDeconstructionCard 删除写作手法拆解卡片，并在来源片段无人引用时同步清理。
+func DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDeconstructionCardResult, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return DeleteDeconstructionCardResult{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureReadingSupportFiles(bookPath, project); err != nil {
+		return DeleteDeconstructionCardResult{}, err
+	}
+	sourceTexts, err := loadSourceTexts(bookPath)
+	if err != nil {
+		return DeleteDeconstructionCardResult{}, err
+	}
+	cards, err := loadDeconstructionCards(bookPath)
+	if err != nil {
+		return DeleteDeconstructionCardResult{}, err
+	}
+
+	removedSourceTextID := ""
+	keptCards := make([]DeconstructionCard, 0, len(cards.Items))
+	for _, card := range cards.Items {
+		if card.ID == request.CardID {
+			removedSourceTextID = card.SourceTextID
+			continue
+		}
+		keptCards = append(keptCards, card)
+	}
+	if removedSourceTextID == "" {
+		return DeleteDeconstructionCardResult{}, fmt.Errorf("拆解卡片不存在: %s", request.CardID)
+	}
+	cards.Items = keptCards
+	sourceTexts = removeUnreferencedSourceText(sourceTexts, cards, removedSourceTextID)
+
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
+		return DeleteDeconstructionCardResult{}, fmt.Errorf("保存拆解卡片失败: %w", err)
+	}
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(sourceTextsRelativePath)), sourceTexts); err != nil {
+		return DeleteDeconstructionCardResult{}, fmt.Errorf("保存选文来源失败: %w", err)
+	}
+	return DeleteDeconstructionCardResult{
+		SourceTexts:         sourceTexts,
+		DeconstructionCards: cards,
+	}, nil
+}
+
 // loadSourceTexts 读取选文来源片段集合。
 func loadSourceTexts(bookPath string) (SourceTextCollection, error) {
 	collection := SourceTextCollection{Version: 1, Items: []SourceText{}}
@@ -114,19 +242,22 @@ func loadSourceTexts(bookPath string) (SourceTextCollection, error) {
 	return collection, nil
 }
 
-// loadDeconstructionCards 读取拆解卡片集合。
+// loadDeconstructionCards 读取写作手法拆解卡片集合，并兼容旧版通用文件。
 func loadDeconstructionCards(bookPath string) (DeconstructionCardCollection, error) {
 	collection := DeconstructionCardCollection{Version: 1, Items: []DeconstructionCard{}}
-	if err := readJSONFile(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), &collection); err != nil {
+	currentPath := filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath))
+	if err := readJSONFile(currentPath, &collection); err != nil {
+		legacyPath := filepath.Join(bookPath, filepath.FromSlash(legacyDeconstructionCardsPath))
+		if legacyErr := readJSONFile(legacyPath, &collection); legacyErr == nil {
+			collection = normalizeWritingTechniqueCardCollection(collection)
+			if writeErr := writeJSONFileAtomic(currentPath, collection); writeErr != nil {
+				return collection, fmt.Errorf("迁移旧版拆解卡片失败: %w", writeErr)
+			}
+			return collection, nil
+		}
 		return collection, fmt.Errorf("读取拆解卡片失败: %w", err)
 	}
-	if collection.Version == 0 {
-		collection.Version = 1
-	}
-	if collection.Items == nil {
-		collection.Items = []DeconstructionCard{}
-	}
-	return collection, nil
+	return normalizeWritingTechniqueCardCollection(collection), nil
 }
 
 // ensureChapterHasNoSourceTexts 阻止拆分已有来源引用的章节，避免破坏追溯偏移。
@@ -175,6 +306,52 @@ func findReusableSourceText(collection SourceTextCollection, bookID string, sele
 		}
 	}
 	return SourceText{}
+}
+
+// normalizeWritingTechniqueCardCollection 补齐旧数据缺省字段，并只保留写作手法拆解卡片。
+func normalizeWritingTechniqueCardCollection(collection DeconstructionCardCollection) DeconstructionCardCollection {
+	if collection.Version == 0 {
+		collection.Version = 1
+	}
+	if collection.Items == nil {
+		collection.Items = []DeconstructionCard{}
+		return collection
+	}
+	items := make([]DeconstructionCard, 0, len(collection.Items))
+	for _, card := range collection.Items {
+		if card.AnalysisKind == "" {
+			card.AnalysisKind = analysisKindWritingTechnique
+		}
+		if card.AnalysisKind != analysisKindWritingTechnique {
+			continue
+		}
+		if card.FieldValues == nil {
+			card.FieldValues = map[string]string{}
+		}
+		if card.TagIDs == nil {
+			card.TagIDs = []string{}
+		}
+		items = append(items, card)
+	}
+	collection.Items = items
+	return collection
+}
+
+// removeUnreferencedSourceText 在删除卡片后清理无人引用的选文来源，保留来源与卡片的分离模型。
+func removeUnreferencedSourceText(sourceTexts SourceTextCollection, cards DeconstructionCardCollection, sourceTextID string) SourceTextCollection {
+	for _, card := range cards.Items {
+		if card.SourceTextID == sourceTextID {
+			return sourceTexts
+		}
+	}
+	keptSources := make([]SourceText, 0, len(sourceTexts.Items))
+	for _, sourceText := range sourceTexts.Items {
+		if sourceText.ID != sourceTextID {
+			keptSources = append(keptSources, sourceText)
+		}
+	}
+	sourceTexts.Items = keptSources
+	return sourceTexts
 }
 
 // normalizeFieldValues 清理旧版字段值，保留历史卡片兼容数据。

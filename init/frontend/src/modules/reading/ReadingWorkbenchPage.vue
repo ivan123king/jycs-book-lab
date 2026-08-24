@@ -37,6 +37,12 @@ import { getErrorMessage } from '@/utils/format'
 
 const props = defineProps<{
   project: BookProject | null
+  sourceFocus?: {
+    chapterId: string
+    sourceTextId: string
+    startOffset: number
+    requestKey: number
+  } | null
 }>()
 
 const emit = defineEmits<{
@@ -298,6 +304,27 @@ async function loadChapter(chapterId: string, charOffset = 0) {
   } catch (error) {
     readingError.value = getErrorMessage(error)
   }
+}
+
+/**
+ * 从写作手法拆解卡片回跳原文时，定位到来源章节和大致字符位置。
+ */
+async function focusSourceTextFromCard() {
+  const focus = props.sourceFocus
+  if (!focus || !activeBookPath.value) {
+    return
+  }
+  await loadReadingSession()
+  readerMode.value = 'read'
+  if (currentChapter.value?.id !== focus.chapterId) {
+    await loadChapter(focus.chapterId, focus.startOffset)
+  } else {
+    currentCharOffset.value = clampCharOffset(focus.startOffset)
+    await restoreScrollPosition()
+    await persistReadingPosition()
+    emitReadingSummary()
+  }
+  readingNotice.value = '已回到拆解来源位置。'
 }
 
 async function persistReadingPosition() {
@@ -981,6 +1008,13 @@ watch(
   },
 )
 
+watch(
+  () => props.sourceFocus?.requestKey,
+  () => {
+    void focusSourceTextFromCard()
+  },
+)
+
 watch(readerMode, () => {
   void persistReadingPosition()
 })
@@ -993,7 +1027,10 @@ watch(catalogSearch, () => {
   catalogPage.value = 1
 })
 
-onMounted(loadReadingSession)
+onMounted(async () => {
+  await loadReadingSession()
+  await focusSourceTextFromCard()
+})
 
 onBeforeUnmount(() => {
   if (scrollSaveTimer.value !== null) {
@@ -1082,7 +1119,7 @@ onBeforeUnmount(() => {
                   <template #icon>
                     <Highlighter :size="14" />
                   </template>
-                  创建拆解
+                  创建写作手法拆解
                 </n-button>
                 <n-button size="small" @click="copySelection">
                   <template #icon>
@@ -1290,7 +1327,7 @@ onBeforeUnmount(() => {
     <n-modal
       v-model:show="deconstructionOpen"
       preset="card"
-      title="创建拆解"
+      title="创建写作手法拆解"
       class="deconstruction-modal"
       :bordered="false"
     >

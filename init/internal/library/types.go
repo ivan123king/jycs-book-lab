@@ -243,10 +243,18 @@ type DeconstructionCard struct {
 	UpdatedAt     string            `json:"updatedAt"`
 }
 
-// DeconstructionCardCollection 对应 deconstructions/deconstruction-cards.json。
+// DeconstructionCardCollection 对应 deconstructions/writing-technique-cards.json。
 type DeconstructionCardCollection struct {
 	Version int                  `json:"version"`
 	Items   []DeconstructionCard `json:"items"`
+}
+
+// DeconstructionCardsWorkspace 返回写作手法拆解管理页所需的项目、来源和卡片数据。
+type DeconstructionCardsWorkspace struct {
+	Project             BookProject                  `json:"project"`
+	Plan                DeconstructionPlan           `json:"plan"`
+	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
 }
 
 // ChapterMemo 保存用户针对单个章节写下的自由小记，随小说项目目录迁移。
@@ -356,6 +364,34 @@ type CreateDeconstructionRequest struct {
 type CreateDeconstructionResult struct {
 	SourceText          SourceText                   `json:"sourceText"`
 	Card                DeconstructionCard           `json:"card"`
+	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// UpdateDeconstructionCardRequest 承载写作手法拆解卡片正文和标签的编辑结果。
+type UpdateDeconstructionCardRequest struct {
+	BookPath    string   `json:"bookPath"`
+	CardID      string   `json:"cardId"`
+	PlanTypeID  string   `json:"planTypeId"`
+	DimensionID string   `json:"dimensionId"`
+	Content     string   `json:"content"`
+	TagIDs      []string `json:"tagIds"`
+}
+
+// UpdateDeconstructionCardResult 返回编辑后完整卡片集合，便于前端刷新列表和详情。
+type UpdateDeconstructionCardResult struct {
+	Card                DeconstructionCard           `json:"card"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// DeleteDeconstructionCardRequest 指定要从当前书删除的写作手法拆解卡片。
+type DeleteDeconstructionCardRequest struct {
+	BookPath string `json:"bookPath"`
+	CardID   string `json:"cardId"`
+}
+
+// DeleteDeconstructionCardResult 返回删除后同步清理过的来源片段和卡片集合。
+type DeleteDeconstructionCardResult struct {
 	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
 }

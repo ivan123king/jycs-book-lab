@@ -37,6 +37,7 @@ type SourceText = booklibrary.SourceText
 type SourceTextCollection = booklibrary.SourceTextCollection
 type DeconstructionCard = booklibrary.DeconstructionCard
 type DeconstructionCardCollection = booklibrary.DeconstructionCardCollection
+type DeconstructionCardsWorkspace = booklibrary.DeconstructionCardsWorkspace
 type ChapterMemo = booklibrary.ChapterMemo
 type ChapterMemoCollection = booklibrary.ChapterMemoCollection
 type ReadingSession = booklibrary.ReadingSession
@@ -52,6 +53,10 @@ type SplitChapterResult = booklibrary.SplitChapterResult
 type SourceSelection = booklibrary.SourceSelection
 type CreateDeconstructionRequest = booklibrary.CreateDeconstructionRequest
 type CreateDeconstructionResult = booklibrary.CreateDeconstructionResult
+type UpdateDeconstructionCardRequest = booklibrary.UpdateDeconstructionCardRequest
+type UpdateDeconstructionCardResult = booklibrary.UpdateDeconstructionCardResult
+type DeleteDeconstructionCardRequest = booklibrary.DeleteDeconstructionCardRequest
+type DeleteDeconstructionCardResult = booklibrary.DeleteDeconstructionCardResult
 
 // App struct
 type App struct {
@@ -242,6 +247,28 @@ func (a *App) SplitChapterFromStart(request SplitChapterRequest) (SplitChapterRe
 // CreateDeconstructionCard 从当前选文创建拆解卡片，并保留来源追溯。
 func (a *App) CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDeconstructionResult, error) {
 	return booklibrary.CreateDeconstructionCard(request)
+}
+
+// OpenDeconstructionCardsWorkspace 读取当前书的写作手法拆解卡片和来源片段。
+func (a *App) OpenDeconstructionCardsWorkspace(bookPath string) (DeconstructionCardsWorkspace, error) {
+	workspace, err := booklibrary.OpenDeconstructionCardsWorkspace(bookPath)
+	if err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
+		return DeconstructionCardsWorkspace{}, err
+	}
+	return workspace, nil
+}
+
+// UpdateDeconstructionCard 更新当前书写作手法拆解卡片的正文和标签。
+func (a *App) UpdateDeconstructionCard(request UpdateDeconstructionCardRequest) (UpdateDeconstructionCardResult, error) {
+	return booklibrary.UpdateDeconstructionCard(request)
+}
+
+// DeleteDeconstructionCard 删除当前书写作手法拆解卡片，并按需清理来源片段。
+func (a *App) DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDeconstructionCardResult, error) {
+	return booklibrary.DeleteDeconstructionCard(request)
 }
 
 // OpenDeconstructionPlanWorkspace 读取当前书的当前拆解方案和模板列表。

@@ -306,7 +306,7 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 		filepath.Join(bookPath, "reading", "reading-state.json"),
 		filepath.Join(bookPath, "reading", "chapter-memos.json"),
 		filepath.Join(bookPath, "source-texts", "source-texts.json"),
-		filepath.Join(bookPath, "deconstructions", "deconstruction-cards.json"),
+		filepath.Join(bookPath, "deconstructions", "writing-technique-cards.json"),
 		filepath.Join(bookPath, "deconstruction-plan.json"),
 		filepath.Join(bookPath, "deconstruction-templates", systemWritingTemplateFileName),
 		filepath.Join(bookPath, "deconstruction-templates", systemStoryTemplateFileName),
@@ -429,6 +429,38 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	}
 	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
 		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
+	}
+	workspace, err := OpenDeconstructionCardsWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("打开写作手法拆解工作区失败: %v", err)
+	}
+	if len(workspace.DeconstructionCards.Items) != 1 || len(workspace.SourceTexts.Items) != 1 {
+		t.Fatalf("写作手法拆解工作区数据不正确: %+v / %+v", workspace.DeconstructionCards.Items, workspace.SourceTexts.Items)
+	}
+	updatedCard, err := UpdateDeconstructionCard(UpdateDeconstructionCardRequest{
+		BookPath:    bookPath,
+		CardID:      created.Card.ID,
+		PlanTypeID:  "emotion",
+		DimensionID: "emotion-change",
+		Content:     "制造迟疑感，并用动作压住情绪",
+		TagIDs:      []string{"氛围", "氛围", "动作"},
+	})
+	if err != nil {
+		t.Fatalf("更新写作手法拆解失败: %v", err)
+	}
+	if updatedCard.Card.PlanTypeName != "人物感情" || updatedCard.Card.DimensionName != "情绪变化" ||
+		updatedCard.Card.Content != "制造迟疑感，并用动作压住情绪" || len(updatedCard.Card.TagIDs) != 2 {
+		t.Fatalf("写作手法拆解更新结果不正确: %+v", updatedCard.Card)
+	}
+	deletedCard, err := DeleteDeconstructionCard(DeleteDeconstructionCardRequest{
+		BookPath: bookPath,
+		CardID:   created.Card.ID,
+	})
+	if err != nil {
+		t.Fatalf("删除写作手法拆解失败: %v", err)
+	}
+	if len(deletedCard.DeconstructionCards.Items) != 0 || len(deletedCard.SourceTexts.Items) != 0 {
+		t.Fatalf("删除后卡片或无人引用选文未清理: %+v / %+v", deletedCard.DeconstructionCards.Items, deletedCard.SourceTexts.Items)
 	}
 
 	clearedMemo, err := SaveChapterMemo(SaveChapterMemoRequest{

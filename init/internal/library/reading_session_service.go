@@ -96,8 +96,17 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 		}
 	}
 	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath))); errors.Is(err, os.ErrNotExist) {
-		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), DeconstructionCardCollection{Version: 1, Items: []DeconstructionCard{}}); err != nil {
-			return err
+		legacyCards := DeconstructionCardCollection{Version: 1, Items: []DeconstructionCard{}}
+		legacyPath := filepath.Join(bookPath, filepath.FromSlash(legacyDeconstructionCardsPath))
+		if legacyErr := readJSONFile(legacyPath, &legacyCards); legacyErr == nil {
+			legacyCards = normalizeWritingTechniqueCardCollection(legacyCards)
+			if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), legacyCards); err != nil {
+				return err
+			}
+		} else {
+			if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), DeconstructionCardCollection{Version: 1, Items: []DeconstructionCard{}}); err != nil {
+				return err
+			}
 		}
 	}
 	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath))); errors.Is(err, os.ErrNotExist) {
