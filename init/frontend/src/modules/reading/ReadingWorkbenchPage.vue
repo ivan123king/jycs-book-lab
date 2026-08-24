@@ -83,7 +83,8 @@ const splitChapterError = ref('')
 const splitTargetChapter = ref<library.BookChapter | null>(null)
 const splitForm = ref({ newTitle: '', newContent: '', remainingContent: '' })
 const selectedPlanTypeId = ref('')
-const fieldValues = ref<Record<string, string>>({})
+const selectedDimensionId = ref('')
+const deconstructionContent = ref('')
 const tagInput = ref('')
 const savingCard = ref(false)
 const cardError = ref('')
@@ -137,12 +138,22 @@ const selectedPlanType = computed(() => {
   return types.find((item) => item.id === selectedPlanTypeId.value) ?? types[0] ?? null
 })
 
-const visiblePlanFields = computed(() => (selectedPlanType.value?.fields ?? []).filter((field) => field.visible))
+const selectedDimension = computed(() => {
+  const dimensions = selectedPlanType.value?.dimensions ?? []
+  return dimensions.find((item) => item.id === selectedDimensionId.value) ?? dimensions[0] ?? null
+})
 
 const planTypeOptions = computed(() =>
   (session.value?.plan.types ?? []).map((type) => ({
-    label: `${type.dimension} / ${type.name}`,
+    label: type.name,
     value: type.id,
+  })),
+)
+
+const dimensionOptions = computed(() =>
+  (selectedPlanType.value?.dimensions ?? []).map((dimension) => ({
+    label: dimension.name,
+    value: dimension.id,
   })),
 )
 
@@ -233,6 +244,7 @@ async function loadReadingSession() {
     currentCharOffset.value = clampCharOffset(loaded.state.lastPosition.charOffset)
     readerFontSize.value = normalizeFontSize(loaded.state.preferences?.fontSize)
     selectedPlanTypeId.value = loaded.plan.types[0]?.id ?? ''
+    syncSelectedDimension()
     syncEditor()
     await restoreScrollPosition()
     emitReadingSummary()
@@ -493,20 +505,20 @@ function openDeconstructionDialog() {
     return
   }
   cardError.value = ''
-  fieldValues.value = {}
+  deconstructionContent.value = ''
   tagInput.value = ''
   selectedPlanTypeId.value = selectedPlanTypeId.value || session.value?.plan.types[0]?.id || ''
+  syncSelectedDimension()
   deconstructionOpen.value = true
 }
 
 async function saveDeconstruction(keepDialogOpen: boolean) {
   const bookPath = activeBookPath.value
-  if (!bookPath || !selectedSource.value || !selectedPlanType.value) {
+  if (!bookPath || !selectedSource.value || !selectedPlanType.value || !selectedDimension.value) {
     return
   }
-  const missingField = visiblePlanFields.value.find((field) => field.required && !fieldValues.value[field.id]?.trim())
-  if (missingField) {
-    cardError.value = `请填写必填字段：${missingField.label}`
+  if (!deconstructionContent.value.trim()) {
+    cardError.value = '请填写你的拆解看法。'
     return
   }
   savingCard.value = true
@@ -516,7 +528,9 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
       bookPath,
       selection: selectedSource.value,
       planTypeId: selectedPlanType.value.id,
-      fieldValues: fieldValues.value,
+      dimensionId: selectedDimension.value.id,
+      content: deconstructionContent.value,
+      fieldValues: {},
       tagIds: splitTags(tagInput.value),
     } as library.CreateDeconstructionRequest)
     if (session.value) {
@@ -524,7 +538,7 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
       session.value.deconstructionCards = result.deconstructionCards
     }
     readingNotice.value = '拆解已保存。'
-    fieldValues.value = {}
+    deconstructionContent.value = ''
     tagInput.value = ''
     if (!keepDialogOpen) {
       deconstructionOpen.value = false
@@ -705,6 +719,10 @@ function syncEditor() {
   editContent.value = chapterContent.value
 }
 
+function syncSelectedDimension() {
+  selectedDimensionId.value = selectedPlanType.value?.dimensions[0]?.id ?? ''
+}
+
 function updateSessionChapter(chapter: library.BookChapter) {
   if (!session.value) {
     return
@@ -882,6 +900,10 @@ watch(
 
 watch(readerMode, () => {
   void persistReadingPosition()
+})
+
+watch(selectedPlanTypeId, () => {
+  syncSelectedDimension()
 })
 
 watch(catalogSearch, () => {
@@ -1145,21 +1167,15 @@ onBeforeUnmount(() => {
         <n-form-item label="拆解类型">
           <n-select v-model:value="selectedPlanTypeId" :options="planTypeOptions" />
         </n-form-item>
-        <n-form-item
-          v-for="field in visiblePlanFields"
-          :key="field.id"
-          :label="field.required ? `${field.label} *` : field.label"
-        >
-          <n-select
-            v-if="field.type === 'select'"
-            v-model:value="fieldValues[field.id]"
-            :options="field.options.map((option) => ({ label: option, value: option }))"
-          />
+        <n-form-item label="拆解维度">
+          <n-select v-model:value="selectedDimensionId" :options="dimensionOptions" />
+        </n-form-item>
+        <n-form-item label="我的看法 *">
           <n-input
-            v-else
-            v-model:value="fieldValues[field.id]"
-            :type="field.type === 'text' ? 'text' : 'textarea'"
-            :autosize="field.type === 'text' ? undefined : { minRows: 3, maxRows: 6 }"
+            v-model:value="deconstructionContent"
+            type="textarea"
+            placeholder="写下你对这段原文的分析，例如表现手法、人物感情或结构作用。"
+            :autosize="{ minRows: 5, maxRows: 8 }"
           />
         </n-form-item>
         <n-form-item label="标签">

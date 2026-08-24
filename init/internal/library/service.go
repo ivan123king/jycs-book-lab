@@ -378,6 +378,10 @@ func writeBookProjectFromDraft(draft ImportDraft) (BookProject, error) {
 		_ = os.RemoveAll(tempPath)
 		return BookProject{}, err
 	}
+	if err := ensureDeconstructionPlanFiles(tempPath, project.Book.ID); err != nil {
+		_ = os.RemoveAll(tempPath)
+		return BookProject{}, err
+	}
 	if err := os.Rename(tempPath, targetPath); err != nil {
 		_ = os.RemoveAll(tempPath)
 		return BookProject{}, fmt.Errorf("提交小说目录失败: %w", err)

@@ -121,7 +121,7 @@ type ReadingState struct {
 	Preferences            ReadingPreferences `json:"preferences"`
 }
 
-// DeconstructionField 定义当前书拆解类型下的一个动态表单字段。
+// DeconstructionField 是旧版拆解方案字段结构，仅用于兼容旧项目迁移。
 type DeconstructionField struct {
 	ID       string   `json:"id"`
 	Label    string   `json:"label"`
@@ -132,21 +132,65 @@ type DeconstructionField struct {
 	Options  []string `json:"options"`
 }
 
-// DeconstructionType 定义当前书拆解方案中的一种拆解卡片类型。
+// DeconstructionDimension 定义某个拆解类型下可选择的分析维度。
+type DeconstructionDimension struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Order int    `json:"order"`
+}
+
+// DeconstructionType 定义当前书拆解方案中的一种拆解类型。
 type DeconstructionType struct {
-	ID        string                `json:"id"`
-	Name      string                `json:"name"`
-	Dimension string                `json:"dimension"`
-	Order     int                   `json:"order"`
-	Fields    []DeconstructionField `json:"fields"`
+	ID         string                    `json:"id"`
+	Name       string                    `json:"name"`
+	Order      int                       `json:"order"`
+	Dimensions []DeconstructionDimension `json:"dimensions"`
+	Dimension  string                    `json:"dimension,omitempty"`
+	Fields     []DeconstructionField     `json:"fields,omitempty"`
 }
 
 // DeconstructionPlan 保存每本书独立的拆解方案配置。
 type DeconstructionPlan struct {
-	Version   int                  `json:"version"`
-	BookID    string               `json:"bookId"`
-	Types     []DeconstructionType `json:"types"`
-	UpdatedAt string               `json:"updatedAt"`
+	Version      int                  `json:"version"`
+	BookID       string               `json:"bookId"`
+	TemplateName string               `json:"templateName"`
+	Types        []DeconstructionType `json:"types"`
+	UpdatedAt    string               `json:"updatedAt"`
+}
+
+// DeconstructionTemplateSummary 是方案页模板列表中的轻量展示项。
+type DeconstructionTemplateSummary struct {
+	Name      string `json:"name"`
+	FileName  string `json:"fileName"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// DeconstructionPlanWorkspace 返回方案页编辑所需的当前方案和模板列表。
+type DeconstructionPlanWorkspace struct {
+	CurrentPlan             DeconstructionPlan              `json:"currentPlan"`
+	CurrentTemplateFileName string                          `json:"currentTemplateFileName"`
+	Templates               []DeconstructionTemplateSummary `json:"templates"`
+}
+
+// SaveDeconstructionPlanRequest 保存当前书正在使用的拆解方案。
+type SaveDeconstructionPlanRequest struct {
+	BookPath string             `json:"bookPath"`
+	Plan     DeconstructionPlan `json:"plan"`
+}
+
+// SaveDeconstructionTemplateRequest 保存或另存当前书模板目录中的模板文件。
+type SaveDeconstructionTemplateRequest struct {
+	BookPath     string             `json:"bookPath"`
+	TemplateName string             `json:"templateName"`
+	FileName     string             `json:"fileName"`
+	Plan         DeconstructionPlan `json:"plan"`
+	Overwrite    bool               `json:"overwrite"`
+}
+
+// SetCurrentDeconstructionTemplateRequest 将模板目录中的某个模板设为当前拆解方案。
+type SetCurrentDeconstructionTemplateRequest struct {
+	BookPath string `json:"bookPath"`
+	FileName string `json:"fileName"`
 }
 
 // SourceText 是从章节正文中选出的原文片段快照，可被多张拆解卡片引用。
@@ -169,14 +213,18 @@ type SourceTextCollection struct {
 
 // DeconstructionCard 保存用户从原文片段创建的结构化拆解卡片。
 type DeconstructionCard struct {
-	ID           string            `json:"id"`
-	BookID       string            `json:"bookId"`
-	SourceTextID string            `json:"sourceTextId"`
-	PlanTypeID   string            `json:"planTypeId"`
-	FieldValues  map[string]string `json:"fieldValues"`
-	TagIDs       []string          `json:"tagIds"`
-	CreatedAt    string            `json:"createdAt"`
-	UpdatedAt    string            `json:"updatedAt"`
+	ID            string            `json:"id"`
+	BookID        string            `json:"bookId"`
+	SourceTextID  string            `json:"sourceTextId"`
+	PlanTypeID    string            `json:"planTypeId"`
+	PlanTypeName  string            `json:"planTypeName"`
+	DimensionID   string            `json:"dimensionId"`
+	DimensionName string            `json:"dimensionName"`
+	Content       string            `json:"content"`
+	FieldValues   map[string]string `json:"fieldValues"`
+	TagIDs        []string          `json:"tagIds"`
+	CreatedAt     string            `json:"createdAt"`
+	UpdatedAt     string            `json:"updatedAt"`
 }
 
 // DeconstructionCardCollection 对应 deconstructions/deconstruction-cards.json。
@@ -265,6 +313,8 @@ type CreateDeconstructionRequest struct {
 	BookPath    string            `json:"bookPath"`
 	Selection   SourceSelection   `json:"selection"`
 	PlanTypeID  string            `json:"planTypeId"`
+	DimensionID string            `json:"dimensionId"`
+	Content     string            `json:"content"`
 	FieldValues map[string]string `json:"fieldValues"`
 	TagIDs      []string          `json:"tagIds"`
 }

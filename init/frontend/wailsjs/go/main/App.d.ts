@@ -16,6 +16,10 @@ export function Greet(arg1:string):Promise<string>;
 
 export function OpenBookProject(arg1:string):Promise<library.BookProject>;
 
+export function OpenDeconstructionPlanWorkspace(arg1:string):Promise<library.DeconstructionPlanWorkspace>;
+
+export function OpenDeconstructionTemplate(arg1:string,arg2:string):Promise<library.DeconstructionPlan>;
+
 export function OpenLastReadingSession():Promise<library.ReadingSession>;
 
 export function OpenReadingSession(arg1:string):Promise<library.ReadingSession>;
@@ -28,8 +32,14 @@ export function RemoveBookFromLibrary(arg1:string):Promise<library.LibraryState>
 
 export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
 
+export function SaveDeconstructionPlan(arg1:library.SaveDeconstructionPlanRequest):Promise<library.DeconstructionPlanWorkspace>;
+
+export function SaveDeconstructionTemplate(arg1:library.SaveDeconstructionTemplateRequest):Promise<library.DeconstructionPlanWorkspace>;
+
 export function SaveReadingPosition(arg1:library.SaveReadingPositionRequest):Promise<library.ReadingState>;
 
 export function SaveReadingPreferences(arg1:library.SaveReadingPreferencesRequest):Promise<library.ReadingState>;
+
+export function SetCurrentDeconstructionTemplate(arg1:library.SetCurrentDeconstructionTemplateRequest):Promise<library.DeconstructionPlanWorkspace>;
 
 export function SplitChapterFromStart(arg1:library.SplitChapterRequest):Promise<library.SplitChapterResult>;

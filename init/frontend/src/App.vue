@@ -10,7 +10,6 @@ import {
   demoChapters,
   demoDeconstructionCards,
   demoMaterials,
-  demoPlanFields,
 } from '@/data/workbenchFixtures'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import DeconstructionCardsPage from '@/modules/deconstructions/DeconstructionCardsPage.vue'
@@ -119,7 +118,7 @@ function clearCurrentBookIfRemoved(bookPath: string) {
               />
               <DeconstructionPlanPage
                 v-else-if="activeView === 'plan'"
-                :fields="demoPlanFields"
+                :project="currentProject"
               />
               <AnalysisPage
                 v-else-if="activeView === 'analysis'"

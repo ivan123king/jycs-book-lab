@@ -186,11 +186,11 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
       "id": "deconstruction-20260821-0001",
       "bookId": "book-20260821-001",
       "sourceTextId": "source-20260821-0001",
-      "planTypeId": "scene",
-      "fieldValues": {
-        "scenePurpose": "让重逢带有迟疑和对峙感",
-        "emotionChange": "从确认对方出现，到压住回应，再到被环境迫使面对。"
-      },
+      "planTypeId": "technique",
+      "planTypeName": "表现手法",
+      "dimensionId": "environment",
+      "dimensionName": "环境描写",
+      "content": "让重逢带有迟疑和对峙感：从确认对方出现，到压住回应，再到被环境迫使面对。",
       "tagIds": ["tag-atmosphere", "tag-reunion"],
       "createdAt": "2026-08-21T10:35:00+08:00",
       "updatedAt": "2026-08-21T10:35:00+08:00"
@@ -202,10 +202,13 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 字段原则：
 
 1. `sourceTextId` 负责来源追溯。
-2. `planTypeId` 指向当前书拆解方案中的拆解类型。
-3. `fieldValues` 必须按当前书拆解方案字段保存，不能写死固定字段。
-4. 一个 `sourceTextId` 可以被多个拆解卡片引用。
-5. 删除拆解卡片不应直接删除原文片段；只有确认没有任何引用时才可清理。
+2. `planTypeId` 指向创建时当前书拆解方案中的拆解类型。
+3. `planTypeName` 保存创建时的类型名称快照，后续模板改名不应改写旧卡片。
+4. `dimensionId` 指向创建时选择的拆解维度。
+5. `dimensionName` 保存创建时的维度名称快照，后续模板改名不应改写旧卡片。
+6. `content` 保存用户自己的拆解看法。
+7. 一个 `sourceTextId` 可以被多个拆解卡片引用。
+8. 删除拆解卡片不应直接删除原文片段；只有确认没有任何引用时才可清理。
 
 ## 与书库索引的关系
 

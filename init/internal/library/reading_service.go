@@ -17,6 +17,9 @@ const (
 	sourceTextsRelativePath         = "source-texts/source-texts.json"
 	deconstructionCardsRelativePath = "deconstructions/deconstruction-cards.json"
 	deconstructionPlanRelativePath  = "deconstruction-plan.json"
+	deconstructionTemplatesDir      = "deconstruction-templates"
+	systemTemplateFileName          = "系统内置模板.json"
+	systemTemplateName              = "系统内置模板"
 	defaultReaderFontSize           = 18
 	minReaderFontSize               = 14
 	maxReaderFontSize               = 28
@@ -307,8 +310,17 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	if err != nil {
 		return CreateDeconstructionResult{}, err
 	}
-	if !planHasType(plan, request.PlanTypeID) {
+	planType, ok := findPlanType(plan, request.PlanTypeID)
+	if !ok {
 		return CreateDeconstructionResult{}, fmt.Errorf("拆解类型不存在: %s", request.PlanTypeID)
+	}
+	dimension, ok := findPlanDimension(planType, request.DimensionID)
+	if !ok {
+		return CreateDeconstructionResult{}, fmt.Errorf("拆解维度不存在: %s", request.DimensionID)
+	}
+	content := strings.TrimSpace(request.Content)
+	if content == "" {
+		return CreateDeconstructionResult{}, errors.New("拆解看法不能为空")
 	}
 
 	sourceTexts, err := loadSourceTexts(bookPath)
@@ -340,14 +352,18 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	}
 
 	card := DeconstructionCard{
-		ID:           nextSequentialID("deconstruction", len(cards.Items)+1),
-		BookID:       project.Book.ID,
-		SourceTextID: sourceText.ID,
-		PlanTypeID:   request.PlanTypeID,
-		FieldValues:  normalizeFieldValues(request.FieldValues),
-		TagIDs:       normalizeTags(request.TagIDs),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:            nextSequentialID("deconstruction", len(cards.Items)+1),
+		BookID:        project.Book.ID,
+		SourceTextID:  sourceText.ID,
+		PlanTypeID:    planType.ID,
+		PlanTypeName:  planType.Name,
+		DimensionID:   dimension.ID,
+		DimensionName: dimension.Name,
+		Content:       content,
+		FieldValues:   normalizeFieldValues(request.FieldValues),
+		TagIDs:        normalizeTags(request.TagIDs),
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 	cards.Items = append(cards.Items, card)
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
@@ -360,6 +376,139 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 		SourceTexts:         sourceTexts,
 		DeconstructionCards: cards,
 	}, nil
+}
+
+// OpenDeconstructionPlanWorkspace 读取当前书的当前方案和可编辑模板列表。
+func OpenDeconstructionPlanWorkspace(bookPath string) (DeconstructionPlanWorkspace, error) {
+	project, err := OpenBookProject(bookPath)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	bookPath = projectRootPath(bookPath)
+	if err := ensureDeconstructionPlanFiles(bookPath, project.Book.ID); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	plan, err := loadDeconstructionPlan(bookPath, project.Book.ID)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	templates, err := listDeconstructionTemplates(bookPath, project.Book.ID)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	return DeconstructionPlanWorkspace{
+		CurrentPlan:             plan,
+		CurrentTemplateFileName: findCurrentTemplateFileName(bookPath, project.Book.ID, plan, templates),
+		Templates:               templates,
+	}, nil
+}
+
+// OpenDeconstructionTemplate 读取模板目录中的一个模板，供方案页选择后编辑。
+func OpenDeconstructionTemplate(bookPath string, fileName string) (DeconstructionPlan, error) {
+	project, err := OpenBookProject(bookPath)
+	if err != nil {
+		return DeconstructionPlan{}, err
+	}
+	bookPath = projectRootPath(bookPath)
+	if err := ensureDeconstructionPlanFiles(bookPath, project.Book.ID); err != nil {
+		return DeconstructionPlan{}, err
+	}
+	templatePath, err := safeTemplatePath(bookPath, fileName)
+	if err != nil {
+		return DeconstructionPlan{}, err
+	}
+	return readDeconstructionPlanFile(templatePath, project.Book.ID)
+}
+
+// SaveDeconstructionPlan 保存当前书正在使用的方案，阅读工作台会按它创建后续拆解。
+func SaveDeconstructionPlan(request SaveDeconstructionPlanRequest) (DeconstructionPlanWorkspace, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureDeconstructionPlanFiles(bookPath, project.Book.ID); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	plan := normalizeDeconstructionPlan(request.Plan, project.Book.ID)
+	if err := validateDeconstructionPlan(plan); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), plan); err != nil {
+		return DeconstructionPlanWorkspace{}, fmt.Errorf("保存当前拆解方案失败: %w", err)
+	}
+	return OpenDeconstructionPlanWorkspace(bookPath)
+}
+
+// SaveDeconstructionTemplate 保存当前书模板目录中的一个模板，另存为时会创建新的 JSON 文件。
+func SaveDeconstructionTemplate(request SaveDeconstructionTemplateRequest) (DeconstructionPlanWorkspace, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureDeconstructionPlanFiles(bookPath, project.Book.ID); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	templateName := strings.TrimSpace(request.TemplateName)
+	if templateName == "" {
+		return DeconstructionPlanWorkspace{}, errors.New("模板名称不能为空")
+	}
+	plan := normalizeDeconstructionPlan(request.Plan, project.Book.ID)
+	plan.TemplateName = templateName
+	if err := validateDeconstructionPlan(plan); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	currentWorkspace, err := OpenDeconstructionPlanWorkspace(bookPath)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	targetFileName := templateName + ".json"
+	if request.Overwrite && strings.TrimSpace(request.FileName) != "" {
+		targetFileName = request.FileName
+	}
+	templatePath, err := safeTemplatePath(bookPath, targetFileName)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	if _, err := os.Stat(templatePath); err == nil && !request.Overwrite {
+		return DeconstructionPlanWorkspace{}, fmt.Errorf("模板已存在: %s", templateName)
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return DeconstructionPlanWorkspace{}, fmt.Errorf("检查模板文件失败: %w", err)
+	}
+	if err := writeJSONFileAtomic(templatePath, plan); err != nil {
+		return DeconstructionPlanWorkspace{}, fmt.Errorf("保存拆解模板失败: %w", err)
+	}
+	if request.Overwrite && sameTemplateFile(currentWorkspace.CurrentTemplateFileName, targetFileName) {
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), plan); err != nil {
+			return DeconstructionPlanWorkspace{}, fmt.Errorf("同步当前拆解方案失败: %w", err)
+		}
+	}
+	return OpenDeconstructionPlanWorkspace(bookPath)
+}
+
+// SetCurrentDeconstructionTemplate 将选中的模板复制为当前方案，不改写历史拆解卡片。
+func SetCurrentDeconstructionTemplate(request SetCurrentDeconstructionTemplateRequest) (DeconstructionPlanWorkspace, error) {
+	project, err := OpenBookProject(request.BookPath)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	bookPath := projectRootPath(request.BookPath)
+	if err := ensureDeconstructionPlanFiles(bookPath, project.Book.ID); err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	templatePath, err := safeTemplatePath(bookPath, request.FileName)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	plan, err := readDeconstructionPlanFile(templatePath, project.Book.ID)
+	if err != nil {
+		return DeconstructionPlanWorkspace{}, err
+	}
+	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), plan); err != nil {
+		return DeconstructionPlanWorkspace{}, fmt.Errorf("设置当前拆解模板失败: %w", err)
+	}
+	return OpenDeconstructionPlanWorkspace(bookPath)
 }
 
 func ensureReadingSupportFiles(bookPath string, project BookProject) error {
@@ -385,12 +534,7 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 			return err
 		}
 	}
-	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath))); errors.Is(err, os.ErrNotExist) {
-		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), defaultDeconstructionPlan(project.Book.ID)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ensureDeconstructionPlanFiles(bookPath, project.Book.ID)
 }
 
 func defaultReadingState(bookID string, chapter BookChapter) ReadingState {
@@ -414,42 +558,74 @@ func defaultReadingState(bookID string, chapter BookChapter) ReadingState {
 func defaultDeconstructionPlan(bookID string) DeconstructionPlan {
 	now := time.Now().Format(time.RFC3339)
 	return DeconstructionPlan{
-		Version:   1,
-		BookID:    bookID,
-		UpdatedAt: now,
+		Version:      1,
+		BookID:       bookID,
+		TemplateName: systemTemplateName,
+		UpdatedAt:    now,
 		Types: []DeconstructionType{
 			{
-				ID:        "scene",
-				Name:      "场景拆解",
-				Dimension: "场景",
-				Order:     1,
-				Fields: []DeconstructionField{
-					{ID: "scenePurpose", Label: "场景目的", Type: "textarea", Order: 1, Required: true, Visible: true},
-					{ID: "emotionChange", Label: "情绪变化", Type: "textarea", Order: 2, Required: false, Visible: true},
+				ID:    "technique",
+				Name:  "表现手法",
+				Order: 1,
+				Dimensions: []DeconstructionDimension{
+					{ID: "environment", Name: "环境描写", Order: 1},
+					{ID: "rhythm", Name: "节奏控制", Order: 2},
+					{ID: "dialogue", Name: "对白技巧", Order: 3},
+					{ID: "imagery", Name: "意象象征", Order: 4},
 				},
 			},
 			{
-				ID:        "dialogue",
-				Name:      "对白拆解",
-				Dimension: "人物",
-				Order:     2,
-				Fields: []DeconstructionField{
-					{ID: "subtext", Label: "潜台词", Type: "textarea", Order: 1, Required: true, Visible: true},
-					{ID: "relationship", Label: "关系变化", Type: "text", Order: 2, Required: false, Visible: true},
+				ID:    "emotion",
+				Name:  "人物感情",
+				Order: 2,
+				Dimensions: []DeconstructionDimension{
+					{ID: "emotion-change", Name: "情绪变化", Order: 1},
+					{ID: "motivation", Name: "人物动机", Order: 2},
+					{ID: "relationship", Name: "关系变化", Order: 3},
+					{ID: "subtext", Name: "潜台词", Order: 4},
 				},
 			},
 			{
-				ID:        "character",
-				Name:      "人物弧光",
-				Dimension: "人物",
-				Order:     3,
-				Fields: []DeconstructionField{
-					{ID: "motivation", Label: "人物动机", Type: "textarea", Order: 1, Required: true, Visible: true},
-					{ID: "change", Label: "转变线索", Type: "textarea", Order: 2, Required: false, Visible: true},
+				ID:    "structure",
+				Name:  "结构设计",
+				Order: 3,
+				Dimensions: []DeconstructionDimension{
+					{ID: "foreshadowing", Name: "伏笔铺垫", Order: 1},
+					{ID: "conflict", Name: "冲突推进", Order: 2},
+					{ID: "information", Name: "信息释放", Order: 3},
+					{ID: "scene-function", Name: "场景功能", Order: 4},
 				},
 			},
 		},
 	}
+}
+
+func ensureDeconstructionPlanFiles(bookPath string, bookID string) error {
+	if err := os.MkdirAll(filepath.Join(bookPath, deconstructionTemplatesDir), 0o755); err != nil {
+		return fmt.Errorf("创建拆解模板目录失败: %w", err)
+	}
+	currentPlanPath := filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath))
+	if _, err := os.Stat(currentPlanPath); errors.Is(err, os.ErrNotExist) {
+		if err := writeJSONFileAtomic(currentPlanPath, defaultDeconstructionPlan(bookID)); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return fmt.Errorf("检查当前拆解方案失败: %w", err)
+	}
+	systemTemplatePath := filepath.Join(bookPath, deconstructionTemplatesDir, systemTemplateFileName)
+	if _, err := os.Stat(systemTemplatePath); errors.Is(err, os.ErrNotExist) {
+		plan, err := readDeconstructionPlanFile(currentPlanPath, bookID)
+		if err != nil {
+			plan = defaultDeconstructionPlan(bookID)
+		}
+		plan.TemplateName = systemTemplateName
+		if err := writeJSONFileAtomic(systemTemplatePath, plan); err != nil {
+			return fmt.Errorf("保存系统内置拆解模板失败: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("检查系统内置拆解模板失败: %w", err)
+	}
+	return nil
 }
 
 func loadReadingState(bookPath string, project BookProject) (ReadingState, error) {
@@ -530,25 +706,221 @@ func clampInt(value int, minValue int, maxValue int) int {
 }
 
 func loadDeconstructionPlan(bookPath string, bookID string) (DeconstructionPlan, error) {
+	return readDeconstructionPlanFile(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), bookID)
+}
+
+func readDeconstructionPlanFile(path string, bookID string) (DeconstructionPlan, error) {
 	var plan DeconstructionPlan
-	if err := readJSONFile(filepath.Join(bookPath, filepath.FromSlash(deconstructionPlanRelativePath)), &plan); err != nil {
+	if err := readJSONFile(path, &plan); err != nil {
 		return DeconstructionPlan{}, fmt.Errorf("读取拆解方案失败: %w", err)
 	}
+	return normalizeDeconstructionPlan(plan, bookID), nil
+}
+
+func normalizeDeconstructionPlan(plan DeconstructionPlan, bookID string) DeconstructionPlan {
 	if plan.Version == 0 {
 		plan.Version = 1
 	}
-	if plan.BookID == "" {
-		plan.BookID = bookID
+	plan.BookID = bookID
+	if strings.TrimSpace(plan.TemplateName) == "" {
+		plan.TemplateName = systemTemplateName
+	}
+	if strings.TrimSpace(plan.UpdatedAt) == "" {
+		plan.UpdatedAt = time.Now().Format(time.RFC3339)
+	}
+	usedTypeIDs := map[string]int{}
+	for index := range plan.Types {
+		plan.Types[index].Name = strings.TrimSpace(plan.Types[index].Name)
+		if plan.Types[index].Name == "" {
+			plan.Types[index].Name = fmt.Sprintf("拆解类型 %d", index+1)
+		}
+		plan.Types[index].ID = normalizeStableID(plan.Types[index].ID, "type", plan.Types[index].Name, index+1, usedTypeIDs)
+		if plan.Types[index].Order <= 0 {
+			plan.Types[index].Order = index + 1
+		}
+		if len(plan.Types[index].Dimensions) == 0 && strings.TrimSpace(plan.Types[index].Dimension) != "" {
+			plan.Types[index].Dimensions = []DeconstructionDimension{
+				{ID: stableIDFromName(plan.Types[index].Dimension, "dimension", 1), Name: strings.TrimSpace(plan.Types[index].Dimension), Order: 1},
+			}
+		}
+		if len(plan.Types[index].Dimensions) == 0 {
+			plan.Types[index].Dimensions = []DeconstructionDimension{
+				{ID: fmt.Sprintf("dimension-%02d", index+1), Name: "通用分析", Order: 1},
+			}
+		}
+		usedDimensionIDs := map[string]int{}
+		for dimensionIndex := range plan.Types[index].Dimensions {
+			dimension := &plan.Types[index].Dimensions[dimensionIndex]
+			dimension.Name = strings.TrimSpace(dimension.Name)
+			if dimension.Name == "" {
+				dimension.Name = fmt.Sprintf("拆解维度 %d", dimensionIndex+1)
+			}
+			dimension.ID = normalizeStableID(dimension.ID, "dimension", dimension.Name, dimensionIndex+1, usedDimensionIDs)
+			if dimension.Order <= 0 {
+				dimension.Order = dimensionIndex + 1
+			}
+		}
+		plan.Types[index].Dimension = ""
+		plan.Types[index].Fields = nil
 	}
 	sort.SliceStable(plan.Types, func(i, j int) bool {
 		return plan.Types[i].Order < plan.Types[j].Order
 	})
 	for index := range plan.Types {
-		sort.SliceStable(plan.Types[index].Fields, func(i, j int) bool {
-			return plan.Types[index].Fields[i].Order < plan.Types[index].Fields[j].Order
+		sort.SliceStable(plan.Types[index].Dimensions, func(i, j int) bool {
+			return plan.Types[index].Dimensions[i].Order < plan.Types[index].Dimensions[j].Order
 		})
 	}
-	return plan, nil
+	return plan
+}
+
+func validateDeconstructionPlan(plan DeconstructionPlan) error {
+	if strings.TrimSpace(plan.TemplateName) == "" {
+		return errors.New("模板名称不能为空")
+	}
+	if len(plan.Types) == 0 {
+		return errors.New("至少需要保留一个拆解类型")
+	}
+	for _, planType := range plan.Types {
+		if strings.TrimSpace(planType.Name) == "" {
+			return errors.New("拆解类型名称不能为空")
+		}
+		if len(planType.Dimensions) == 0 {
+			return fmt.Errorf("拆解类型“%s”至少需要一个维度", planType.Name)
+		}
+		for _, dimension := range planType.Dimensions {
+			if strings.TrimSpace(dimension.Name) == "" {
+				return fmt.Errorf("拆解类型“%s”存在空维度名称", planType.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func listDeconstructionTemplates(bookPath string, bookID string) ([]DeconstructionTemplateSummary, error) {
+	templatesDir := filepath.Join(bookPath, deconstructionTemplatesDir)
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return nil, fmt.Errorf("读取拆解模板目录失败: %w", err)
+	}
+	templates := []DeconstructionTemplateSummary{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".json") {
+			continue
+		}
+		plan, err := readDeconstructionPlanFile(filepath.Join(templatesDir, entry.Name()), bookID)
+		if err != nil {
+			continue
+		}
+		templates = append(templates, DeconstructionTemplateSummary{
+			Name:      plan.TemplateName,
+			FileName:  entry.Name(),
+			UpdatedAt: plan.UpdatedAt,
+		})
+	}
+	sort.SliceStable(templates, func(i, j int) bool {
+		if templates[i].FileName == systemTemplateFileName {
+			return true
+		}
+		if templates[j].FileName == systemTemplateFileName {
+			return false
+		}
+		return strings.ToLower(templates[i].Name) < strings.ToLower(templates[j].Name)
+	})
+	return templates, nil
+}
+
+func findCurrentTemplateFileName(bookPath string, bookID string, currentPlan DeconstructionPlan, templates []DeconstructionTemplateSummary) string {
+	templatesDir := filepath.Join(bookPath, deconstructionTemplatesDir)
+	for _, template := range templates {
+		plan, err := readDeconstructionPlanFile(filepath.Join(templatesDir, template.FileName), bookID)
+		if err == nil && deconstructionPlansEquivalent(currentPlan, plan) {
+			return template.FileName
+		}
+	}
+	expectedFileName := sanitizeTemplateFileName(currentPlan.TemplateName + ".json")
+	for _, template := range templates {
+		if sameTemplateFile(template.FileName, expectedFileName) {
+			return template.FileName
+		}
+	}
+	return ""
+}
+
+func deconstructionPlansEquivalent(left DeconstructionPlan, right DeconstructionPlan) bool {
+	left.UpdatedAt = ""
+	right.UpdatedAt = ""
+	left.BookID = ""
+	right.BookID = ""
+	leftContent, leftErr := json.Marshal(left)
+	rightContent, rightErr := json.Marshal(right)
+	return leftErr == nil && rightErr == nil && string(leftContent) == string(rightContent)
+}
+
+func sameTemplateFile(left string, right string) bool {
+	return strings.EqualFold(sanitizeTemplateFileName(left), sanitizeTemplateFileName(right))
+}
+
+func safeTemplatePath(bookPath string, fileName string) (string, error) {
+	cleanName := sanitizeTemplateFileName(fileName)
+	if cleanName == "" {
+		return "", errors.New("模板文件名不能为空")
+	}
+	return safeProjectPath(bookPath, filepath.ToSlash(filepath.Join(deconstructionTemplatesDir, cleanName)))
+}
+
+func sanitizeTemplateFileName(fileName string) string {
+	fileName = strings.TrimSpace(fileName)
+	fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	var builder strings.Builder
+	for _, value := range fileName {
+		switch value {
+		case '\\', '/', ':', '*', '?', '"', '<', '>', '|':
+			builder.WriteByte('-')
+		default:
+			builder.WriteRune(value)
+		}
+	}
+	cleaned := strings.Trim(builder.String(), " .-_")
+	if cleaned == "" {
+		return ""
+	}
+	return cleaned + ".json"
+}
+
+func normalizeStableID(currentID string, prefix string, name string, fallbackOrder int, used map[string]int) string {
+	base := strings.TrimSpace(currentID)
+	if base == "" {
+		base = stableIDFromName(name, prefix, fallbackOrder)
+	}
+	base = sanitizeID(base, prefix, fallbackOrder)
+	used[base]++
+	if used[base] == 1 {
+		return base
+	}
+	return fmt.Sprintf("%s-%02d", base, used[base])
+}
+
+func stableIDFromName(name string, prefix string, fallbackOrder int) string {
+	return fmt.Sprintf("%s-%02d", prefix, fallbackOrder)
+}
+
+func sanitizeID(value string, prefix string, fallbackOrder int) string {
+	value = strings.TrimSpace(value)
+	var builder strings.Builder
+	for _, item := range strings.ToLower(value) {
+		switch {
+		case item >= 'a' && item <= 'z', item >= '0' && item <= '9':
+			builder.WriteRune(item)
+		case item == '-' || item == '_':
+			builder.WriteRune(item)
+		}
+	}
+	cleaned := strings.Trim(builder.String(), "-_")
+	if cleaned == "" {
+		return fmt.Sprintf("%s-%02d", prefix, fallbackOrder)
+	}
+	return cleaned
 }
 
 func loadSourceTexts(bookPath string) (SourceTextCollection, error) {
@@ -730,13 +1102,22 @@ func projectRootPath(bookPath string) string {
 	return filepath.Clean(strings.TrimSpace(bookPath))
 }
 
-func planHasType(plan DeconstructionPlan, planTypeID string) bool {
+func findPlanType(plan DeconstructionPlan, planTypeID string) (DeconstructionType, bool) {
 	for _, planType := range plan.Types {
 		if planType.ID == planTypeID {
-			return true
+			return planType, true
 		}
 	}
-	return false
+	return DeconstructionType{}, false
+}
+
+func findPlanDimension(planType DeconstructionType, dimensionID string) (DeconstructionDimension, bool) {
+	for _, dimension := range planType.Dimensions {
+		if dimension.ID == dimensionID {
+			return dimension, true
+		}
+	}
+	return DeconstructionDimension{}, false
 }
 
 func findReusableSourceText(collection SourceTextCollection, bookID string, selection SourceSelection) SourceText {

@@ -30,6 +30,14 @@ export function OpenBookProject(arg1) {
   return window['go']['main']['App']['OpenBookProject'](arg1);
 }
 
+export function OpenDeconstructionPlanWorkspace(arg1) {
+  return window['go']['main']['App']['OpenDeconstructionPlanWorkspace'](arg1);
+}
+
+export function OpenDeconstructionTemplate(arg1, arg2) {
+  return window['go']['main']['App']['OpenDeconstructionTemplate'](arg1, arg2);
+}
+
 export function OpenLastReadingSession() {
   return window['go']['main']['App']['OpenLastReadingSession']();
 }
@@ -54,12 +62,24 @@ export function SaveChapterContent(arg1) {
   return window['go']['main']['App']['SaveChapterContent'](arg1);
 }
 
+export function SaveDeconstructionPlan(arg1) {
+  return window['go']['main']['App']['SaveDeconstructionPlan'](arg1);
+}
+
+export function SaveDeconstructionTemplate(arg1) {
+  return window['go']['main']['App']['SaveDeconstructionTemplate'](arg1);
+}
+
 export function SaveReadingPosition(arg1) {
   return window['go']['main']['App']['SaveReadingPosition'](arg1);
 }
 
 export function SaveReadingPreferences(arg1) {
   return window['go']['main']['App']['SaveReadingPreferences'](arg1);
+}
+
+export function SetCurrentDeconstructionTemplate(arg1) {
+  return window['go']['main']['App']['SetCurrentDeconstructionTemplate'](arg1);
 }
 
 export function SplitChapterFromStart(arg1) {

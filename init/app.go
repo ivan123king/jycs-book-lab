@@ -25,8 +25,14 @@ type ReadingPosition = booklibrary.ReadingPosition
 type ReadingPreferences = booklibrary.ReadingPreferences
 type ReadingState = booklibrary.ReadingState
 type DeconstructionField = booklibrary.DeconstructionField
+type DeconstructionDimension = booklibrary.DeconstructionDimension
 type DeconstructionType = booklibrary.DeconstructionType
 type DeconstructionPlan = booklibrary.DeconstructionPlan
+type DeconstructionTemplateSummary = booklibrary.DeconstructionTemplateSummary
+type DeconstructionPlanWorkspace = booklibrary.DeconstructionPlanWorkspace
+type SaveDeconstructionPlanRequest = booklibrary.SaveDeconstructionPlanRequest
+type SaveDeconstructionTemplateRequest = booklibrary.SaveDeconstructionTemplateRequest
+type SetCurrentDeconstructionTemplateRequest = booklibrary.SetCurrentDeconstructionTemplateRequest
 type SourceText = booklibrary.SourceText
 type SourceTextCollection = booklibrary.SourceTextCollection
 type DeconstructionCard = booklibrary.DeconstructionCard
@@ -227,4 +233,29 @@ func (a *App) SplitChapterFromStart(request SplitChapterRequest) (SplitChapterRe
 // CreateDeconstructionCard 从当前选文创建拆解卡片，并保留来源追溯。
 func (a *App) CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDeconstructionResult, error) {
 	return booklibrary.CreateDeconstructionCard(request)
+}
+
+// OpenDeconstructionPlanWorkspace 读取当前书的当前拆解方案和模板列表。
+func (a *App) OpenDeconstructionPlanWorkspace(bookPath string) (DeconstructionPlanWorkspace, error) {
+	return booklibrary.OpenDeconstructionPlanWorkspace(bookPath)
+}
+
+// OpenDeconstructionTemplate 读取当前书模板目录中的指定模板。
+func (a *App) OpenDeconstructionTemplate(bookPath string, fileName string) (DeconstructionPlan, error) {
+	return booklibrary.OpenDeconstructionTemplate(bookPath, fileName)
+}
+
+// SaveDeconstructionPlan 保存当前书正在使用的拆解方案。
+func (a *App) SaveDeconstructionPlan(request SaveDeconstructionPlanRequest) (DeconstructionPlanWorkspace, error) {
+	return booklibrary.SaveDeconstructionPlan(request)
+}
+
+// SaveDeconstructionTemplate 保存或另存当前书模板目录中的拆解模板。
+func (a *App) SaveDeconstructionTemplate(request SaveDeconstructionTemplateRequest) (DeconstructionPlanWorkspace, error) {
+	return booklibrary.SaveDeconstructionTemplate(request)
+}
+
+// SetCurrentDeconstructionTemplate 将选中的模板设为当前书阅读拆解使用的方案。
+func (a *App) SetCurrentDeconstructionTemplate(request SetCurrentDeconstructionTemplateRequest) (DeconstructionPlanWorkspace, error) {
+	return booklibrary.SetCurrentDeconstructionTemplate(request)
 }

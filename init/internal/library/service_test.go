@@ -304,6 +304,7 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 		filepath.Join(bookPath, "source-texts", "source-texts.json"),
 		filepath.Join(bookPath, "deconstructions", "deconstruction-cards.json"),
 		filepath.Join(bookPath, "deconstruction-plan.json"),
+		filepath.Join(bookPath, "deconstruction-templates", "系统内置模板.json"),
 	} {
 		if _, err := os.Stat(requiredPath); err != nil {
 			t.Fatalf("缺少阅读数据文件 %s: %v", requiredPath, err)
@@ -387,11 +388,10 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 			EndOffset:    6,
 			SelectedText: "她把信收进外套",
 		},
-		PlanTypeID: "scene",
-		FieldValues: map[string]string{
-			"scenePurpose": "制造迟疑感",
-		},
-		TagIDs: []string{"氛围", "重逢"},
+		PlanTypeID:  "technique",
+		DimensionID: "environment",
+		Content:     "制造迟疑感",
+		TagIDs:      []string{"氛围", "重逢"},
 	})
 	if err != nil {
 		t.Fatalf("创建拆解失败: %v", err)
@@ -399,8 +399,98 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if created.Card.SourceTextID == "" || created.SourceText.ID == "" {
 		t.Fatalf("拆解未保留来源引用: %+v / %+v", created.Card, created.SourceText)
 	}
+	if created.Card.PlanTypeName != "表现手法" || created.Card.DimensionName != "环境描写" || created.Card.Content != "制造迟疑感" {
+		t.Fatalf("拆解卡片未保存类型、维度和内容快照: %+v", created.Card)
+	}
 	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
 		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
+	}
+}
+
+// TestDeconstructionPlanTemplatesPersistPerBook 覆盖当前书模板目录、另存模板和设为当前模板流程。
+func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "模板小说.txt")
+	sourceText := "第一章 雨夜\nA 段正文。\n"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-template-001",
+		SourcePath: sourcePath,
+		BookName:   "模板小说",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+	bookPath := result.Project.Book.BookPath
+
+	workspace, err := OpenDeconstructionPlanWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("打开拆解方案工作区失败: %v", err)
+	}
+	if workspace.CurrentPlan.TemplateName != systemTemplateName {
+		t.Fatalf("当前模板名 = %s, want %s", workspace.CurrentPlan.TemplateName, systemTemplateName)
+	}
+	if len(workspace.Templates) != 1 || workspace.Templates[0].FileName != systemTemplateFileName {
+		t.Fatalf("模板列表不正确: %+v", workspace.Templates)
+	}
+	if workspace.CurrentTemplateFileName != systemTemplateFileName {
+		t.Fatalf("当前模板文件 = %s, want %s", workspace.CurrentTemplateFileName, systemTemplateFileName)
+	}
+
+	customPlan := workspace.CurrentPlan
+	customPlan.TemplateName = "感情线模板"
+	customPlan.Types = []DeconstructionType{
+		{
+			ID:    "emotion-line",
+			Name:  "人物感情",
+			Order: 1,
+			Dimensions: []DeconstructionDimension{
+				{ID: "hesitation", Name: "迟疑", Order: 1},
+				{ID: "defense", Name: "防御", Order: 2},
+			},
+		},
+	}
+	workspace, err = SaveDeconstructionTemplate(SaveDeconstructionTemplateRequest{
+		BookPath:     bookPath,
+		TemplateName: "感情线模板",
+		Plan:         customPlan,
+	})
+	if err != nil {
+		t.Fatalf("另存模板失败: %v", err)
+	}
+	if len(workspace.Templates) != 2 {
+		t.Fatalf("另存后模板数量 = %d, want 2", len(workspace.Templates))
+	}
+
+	workspace, err = SetCurrentDeconstructionTemplate(SetCurrentDeconstructionTemplateRequest{
+		BookPath: bookPath,
+		FileName: "感情线模板.json",
+	})
+	if err != nil {
+		t.Fatalf("设为当前模板失败: %v", err)
+	}
+	if workspace.CurrentPlan.TemplateName != "感情线模板" || workspace.CurrentPlan.Types[0].ID != "emotion-line" {
+		t.Fatalf("当前模板未替换为自定义模板: %+v", workspace.CurrentPlan)
+	}
+	if workspace.CurrentTemplateFileName != "感情线模板.json" {
+		t.Fatalf("当前模板文件 = %s, want 感情线模板.json", workspace.CurrentTemplateFileName)
+	}
+
+	customPlan.Types[0].Dimensions[0].Name = "情绪迟疑"
+	workspace, err = SaveDeconstructionTemplate(SaveDeconstructionTemplateRequest{
+		BookPath:     bookPath,
+		TemplateName: "感情线模板",
+		FileName:     "感情线模板.json",
+		Plan:         customPlan,
+		Overwrite:    true,
+	})
+	if err != nil {
+		t.Fatalf("保存当前模板失败: %v", err)
+	}
+	if workspace.CurrentPlan.Types[0].Dimensions[0].Name != "情绪迟疑" {
+		t.Fatalf("保存当前模板后未同步当前方案: %+v", workspace.CurrentPlan.Types[0].Dimensions[0])
 	}
 }
 
@@ -518,10 +608,9 @@ func TestSplitChapterFromStartRejectsChapterWithSourceTexts(t *testing.T) {
 			EndOffset:    len("A 段正文"),
 			SelectedText: "A 段正文",
 		},
-		PlanTypeID: "scene",
-		FieldValues: map[string]string{
-			"scenePurpose": "测试来源保护",
-		},
+		PlanTypeID:  "technique",
+		DimensionID: "environment",
+		Content:     "测试来源保护",
 	}); err != nil {
 		t.Fatalf("创建拆解失败: %v", err)
 	}

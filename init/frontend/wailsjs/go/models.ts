@@ -288,6 +288,8 @@ export namespace library {
 	    bookPath: string;
 	    selection: SourceSelection;
 	    planTypeId: string;
+	    dimensionId: string;
+	    content: string;
 	    fieldValues: Record<string, string>;
 	    tagIds: string[];
 	
@@ -300,6 +302,8 @@ export namespace library {
 	        this.bookPath = source["bookPath"];
 	        this.selection = this.convertValues(source["selection"], SourceSelection);
 	        this.planTypeId = source["planTypeId"];
+	        this.dimensionId = source["dimensionId"];
+	        this.content = source["content"];
 	        this.fieldValues = source["fieldValues"];
 	        this.tagIds = source["tagIds"];
 	    }
@@ -391,6 +395,10 @@ export namespace library {
 	    bookId: string;
 	    sourceTextId: string;
 	    planTypeId: string;
+	    planTypeName: string;
+	    dimensionId: string;
+	    dimensionName: string;
+	    content: string;
 	    fieldValues: Record<string, string>;
 	    tagIds: string[];
 	    createdAt: string;
@@ -406,6 +414,10 @@ export namespace library {
 	        this.bookId = source["bookId"];
 	        this.sourceTextId = source["sourceTextId"];
 	        this.planTypeId = source["planTypeId"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionId = source["dimensionId"];
+	        this.dimensionName = source["dimensionName"];
+	        this.content = source["content"];
 	        this.fieldValues = source["fieldValues"];
 	        this.tagIds = source["tagIds"];
 	        this.createdAt = source["createdAt"];
@@ -476,6 +488,22 @@ export namespace library {
 	}
 	
 	
+	export class DeconstructionDimension {
+	    id: string;
+	    name: string;
+	    order: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionDimension(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.order = source["order"];
+	    }
+	}
 	export class DeconstructionField {
 	    id: string;
 	    label: string;
@@ -503,9 +531,10 @@ export namespace library {
 	export class DeconstructionType {
 	    id: string;
 	    name: string;
-	    dimension: string;
 	    order: number;
-	    fields: DeconstructionField[];
+	    dimensions: DeconstructionDimension[];
+	    dimension?: string;
+	    fields?: DeconstructionField[];
 	
 	    static createFrom(source: any = {}) {
 	        return new DeconstructionType(source);
@@ -515,8 +544,9 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	        this.dimension = source["dimension"];
 	        this.order = source["order"];
+	        this.dimensions = this.convertValues(source["dimensions"], DeconstructionDimension);
+	        this.dimension = source["dimension"];
 	        this.fields = this.convertValues(source["fields"], DeconstructionField);
 	    }
 	
@@ -541,6 +571,7 @@ export namespace library {
 	export class DeconstructionPlan {
 	    version: number;
 	    bookId: string;
+	    templateName: string;
 	    types: DeconstructionType[];
 	    updatedAt: string;
 	
@@ -552,6 +583,7 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.bookId = source["bookId"];
+	        this.templateName = source["templateName"];
 	        this.types = this.convertValues(source["types"], DeconstructionType);
 	        this.updatedAt = source["updatedAt"];
 	    }
@@ -574,6 +606,57 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeconstructionTemplateSummary {
+	    name: string;
+	    fileName: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionTemplateSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.fileName = source["fileName"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class DeconstructionPlanWorkspace {
+	    currentPlan: DeconstructionPlan;
+	    currentTemplateFileName: string;
+	    templates: DeconstructionTemplateSummary[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionPlanWorkspace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentPlan = this.convertValues(source["currentPlan"], DeconstructionPlan);
+	        this.currentTemplateFileName = source["currentTemplateFileName"];
+	        this.templates = this.convertValues(source["templates"], DeconstructionTemplateSummary);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	
 	export class ImportChapterPreview {
 	    id: string;
@@ -781,6 +864,76 @@ export namespace library {
 	        this.content = source["content"];
 	    }
 	}
+	export class SaveDeconstructionPlanRequest {
+	    bookPath: string;
+	    plan: DeconstructionPlan;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveDeconstructionPlanRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.plan = this.convertValues(source["plan"], DeconstructionPlan);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SaveDeconstructionTemplateRequest {
+	    bookPath: string;
+	    templateName: string;
+	    fileName: string;
+	    plan: DeconstructionPlan;
+	    overwrite: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveDeconstructionTemplateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.templateName = source["templateName"];
+	        this.fileName = source["fileName"];
+	        this.plan = this.convertValues(source["plan"], DeconstructionPlan);
+	        this.overwrite = source["overwrite"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SaveReadingPositionRequest {
 	    bookPath: string;
 	    chapterId: string;
@@ -817,6 +970,20 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bookPath = source["bookPath"];
 	        this.fontSize = source["fontSize"];
+	    }
+	}
+	export class SetCurrentDeconstructionTemplateRequest {
+	    bookPath: string;
+	    fileName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SetCurrentDeconstructionTemplateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.fileName = source["fileName"];
 	    }
 	}
 	
