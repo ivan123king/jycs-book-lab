@@ -13,6 +13,10 @@
    - 书库、小说导入、书库数据结构：`docs/dev-guides/book-library/design-principles.md`、`docs/dev-guides/book-library/data-structure.md`、`docs/dev-guides/book-library/page-structure.md`
    - 阅读工作台、阅读/编辑 TAB、目录分页、选文拆解弹框、阅读位置：`docs/dev-guides/reading-workbench/design-principles.md`、`docs/dev-guides/reading-workbench/page-structure.md`、`docs/dev-guides/reading-workbench/data-structure.md`
    - 拆解方案、拆解模板、`analysisKind`、当前模板引用、阅读中创建拆解的类型和维度配置：`docs/dev-guides/deconstruction-plan.md`
+   - 写作手法拆解、选文拆解弹框、写作手法卡片、沉淀素材入口：`docs/dev-guides/writing-technique-deconstruction/implementation.md`
+   - 剧情拆解、非连续章节范围、剧情简介、剧情维度输入、剧情草稿：`docs/dev-guides/story-plot-deconstruction/implementation.md`
+   - 小说内素材、拆解沉淀素材、单本小说素材正式数据：`docs/dev-guides/book-material-library/implementation.md`
+   - 全局素材库、跨书素材引用索引、来源项目状态：`docs/dev-guides/global-material-library.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
    - 注释、文件组织、协作规则：`docs/dev-guides/coding-rules.md`
@@ -46,6 +50,10 @@
 | `docs/dev-guides/reading-workbench/page-structure.md` | 阅读工作台页面结构，说明上一页/下一页阅读区、右侧目录分页弹层、拆解弹框和页面状态。 | 阅读工作台布局、目录交互、阅读位置恢复、拆解弹框页面任务。 |
 | `docs/dev-guides/reading-workbench/data-structure.md` | 阅读工作台数据结构，说明阅读位置、目录分页计算、原文片段和拆解卡片来源引用。 | 阅读位置保存、选文来源追溯、拆解卡片数据结构和旧数据迁移任务。 |
 | `docs/dev-guides/deconstruction-plan.md` | 拆解方案与模板指南，说明当前方案引用、模板目录、`analysisKind`、类型、维度、模板切换和卡片快照保存规则。 | 拆解方案页、拆解模板、阅读拆解表单、拆解卡片保存结构相关任务。 |
+| `docs/dev-guides/writing-technique-deconstruction/implementation.md` | 写作手法拆解模块实现指南，说明选文创建、来源追溯、卡片页、数据结构和沉淀素材入口。 | 写作手法拆解弹框、写作手法拆解卡片页、选文来源追溯和素材沉淀入口相关任务。 |
+| `docs/dev-guides/story-plot-deconstruction/implementation.md` | 剧情拆解模块实现指南，说明剧情拆解与写作手法拆解的区别、非连续章节范围、剧情简介、维度折叠、章节内容查看和草稿保存。 | 剧情拆解页、新建剧情拆解弹框、剧情卡片详情、剧情素材沉淀相关任务。 |
+| `docs/dev-guides/book-material-library/implementation.md` | 小说内素材模块实现指南，说明单本小说素材正式数据、来源追溯、拆解沉淀素材和与全局索引的同步关系。 | 小说内素材页、素材数据结构、素材来源追溯、从拆解沉淀素材相关任务。 |
+| `docs/dev-guides/global-material-library.md` | 全局素材库指南，说明跨书素材引用索引、来源项目状态和索引重建规则。 | 全局素材库页、跨书素材检索、素材索引刷新和来源项目丢失处理任务。 |
 | `docs/dev-guides/backend-local-data.md` | 本地后端、数据模型、存储和业务服务指南。 | 文件导入、章节识别、数据库、搜索、标签、素材、来源追溯相关任务。 |
 | `docs/dev-guides/coding-rules.md` | 编码、注释、命名和协作规则。 | 新增文件、模块、函数、复杂业务逻辑、数据结构变更任务。 |
 
@@ -65,11 +73,13 @@ P0 只围绕完整闭环开发：
 1. 书库模块
 2. 小说导入与章节识别模块
 3. 阅读与正文编辑模块
-4. 选文拆解模块
-5. 拆解方案配置模块
-6. 素材库模块
-7. 分类与标签模块
-8. 来源追溯模块
+4. 写作手法拆解模块
+5. 剧情拆解模块
+6. 拆解方案配置模块
+7. 小说内素材库模块
+8. 全局素材库模块
+9. 分类与标签模块
+10. 来源追溯模块
 
 暂不主动开发跨书比较、复杂图表、AI 自动分析、云同步、账号系统。
 
@@ -78,7 +88,7 @@ P0 只围绕完整闭环开发：
 每次开发前确认：
 
 1. 任务属于哪个模块。
-2. 是否影响书籍、章节、原文片段、拆解卡片、素材之间的关系。
+2. 是否影响书籍、章节、原文片段、写作手法拆解卡片、剧情拆解卡片、素材之间的关系。
 3. 是否需要更新本地数据结构。
 4. 是否需要迁移旧数据。
 5. 是否会增加用户填写成本。

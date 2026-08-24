@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // App.vue 负责第一阶段应用壳层路由和当前书摘要，不承载具体页面业务实现。
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NScrollbar } from 'naive-ui'
+import { OpenLastReadingSession } from '@wails/go/main/App'
 import AppSidebar from '@/components/app/AppSidebar.vue'
 import AppTopbar from '@/components/app/AppTopbar.vue'
 import {
@@ -28,6 +29,11 @@ const libraryMode = ref<'list' | 'import'>('list')
 const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
 const currentProject = ref<BookProject | null>(null)
 
+type ApplyCurrentBookOptions = {
+  navigateToReading?: boolean
+  readingPosition?: string
+}
+
 const activeTitle = computed(() => {
   const titles: Record<ViewKey, string> = {
     library: '书库',
@@ -48,7 +54,7 @@ function goTo(view: ViewKey) {
 /**
  * 用打开的小说项目刷新壳层摘要；章节正文和拆解数据仍由具体页面按项目目录加载。
  */
-function applyCurrentBook(project: BookProject) {
+function applyCurrentBook(project: BookProject, options: ApplyCurrentBookOptions = {}) {
   currentProject.value = project
   currentBook.value = {
     title: project.book.name,
@@ -59,9 +65,42 @@ function applyCurrentBook(project: BookProject) {
     deconstructions: 0,
     materials: 0,
     updatedAt: formatDateTime(project.book.updatedAt),
-    readingPosition: project.chapters[0]?.title ? `${project.chapters[0].title} · 0%` : '尚未开始阅读',
+    readingPosition:
+      options.readingPosition ?? (project.chapters[0]?.title ? `${project.chapters[0].title} · 0%` : '尚未开始阅读'),
   }
-  activeView.value = 'reading'
+  if (options.navigateToReading ?? true) {
+    activeView.value = 'reading'
+  }
+}
+
+/**
+ * 从应用级最近打开入口恢复当前书，只刷新壳层上下文，不强制跳转当前页面。
+ */
+async function restoreLastOpenedBook() {
+  try {
+    const session = await OpenLastReadingSession()
+    if (!session) {
+      return
+    }
+    applyCurrentBook(session.project, {
+      navigateToReading: false,
+      readingPosition: buildReadingPositionSummary(session),
+    })
+  } catch (error) {
+    console.warn('恢复最近打开小说失败', error)
+  }
+}
+
+/**
+ * 用后端恢复出的阅读状态生成顶部当前书摘要，供所有模块共享。
+ */
+function buildReadingPositionSummary(session: Awaited<ReturnType<typeof OpenLastReadingSession>>) {
+  if (!session) {
+    return '尚未开始阅读'
+  }
+  const chapterTitle = session.currentChapter?.title || session.project.chapters[0]?.title
+  const progressPercent = Math.min(100, Math.max(0, Math.round(session.state?.readingProgressPercent ?? 0)))
+  return chapterTitle ? `${chapterTitle} · ${progressPercent}%` : '尚未开始阅读'
 }
 
 function updateReadingPosition(summary: string) {
@@ -78,6 +117,8 @@ function clearCurrentBookIfRemoved(bookPath: string) {
   currentProject.value = null
   currentBook.value = { ...defaultCurrentBook }
 }
+
+onMounted(restoreLastOpenedBook)
 </script>
 
 <template>

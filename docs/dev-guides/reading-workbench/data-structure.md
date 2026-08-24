@@ -19,7 +19,7 @@ books/{bookId}/
 ├── source-texts/
 │   └── source-texts.json
 └── deconstructions/
-    └── deconstruction-cards.json
+    └── writing-technique-cards.json
 ```
 
 说明：
@@ -28,7 +28,7 @@ books/{bookId}/
 2. `reading/reading-state.json` 保存当前书阅读位置。
 3. `reading/chapter-memos.json` 保存章节级自由小记。
 4. `source-texts/source-texts.json` 保存选文来源片段的结构化位置。
-5. `deconstructions/deconstruction-cards.json` 保存拆解卡片结构化数据。
+5. `deconstructions/writing-technique-cards.json` 保存阅读中通过选中文字创建的写作手法拆解卡片结构化数据。
 6. 如果某个拆解或素材包含需要直接阅读的长文本，应额外保存为 TXT，并在 JSON 中记录相对路径。
 
 ## 阅读状态
@@ -206,11 +206,11 @@ catalogPage = floor((chapterOrder - 1) / pageSize) + 1
 4. 同一选文可以关联多个拆解卡片。
 5. 如果正文编辑导致偏移变化，后续迁移逻辑应尽量按选文快照重新匹配，并保留旧偏移作为历史信息。
 
-## 拆解卡片引用
+## 写作手法拆解卡片引用
 
-拆解卡片必须引用原文片段，而不是只保存一段孤立笔记。
+写作手法拆解卡片必须引用原文片段，而不是只保存一段孤立笔记。
 
-`deconstructions/deconstruction-cards.json` 示例：
+`deconstructions/writing-technique-cards.json` 示例：
 
 ```json
 {
