@@ -17,6 +17,8 @@ defineProps<{
         当前书：{{ currentBook.title }} · {{ currentBook.readingPosition }}
       </div>
     </div>
-    <div class="topbar-actions" />
+    <div class="topbar-actions">
+      <slot name="actions" />
+    </div>
   </n-layout-header>
 </template>

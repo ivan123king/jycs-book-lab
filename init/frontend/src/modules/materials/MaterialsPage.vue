@@ -16,7 +16,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { BookOpen, Edit3, Eye, Library, MapPinned, RefreshCw, Save, Search, Trash2 } from 'lucide-vue-next'
+import { BookOpen, Edit3, Eye, Library, MapPinned, Save, Search, Trash2 } from 'lucide-vue-next'
 import { DeleteMaterial, OpenMaterialWorkspace, UpdateMaterial } from '@wails/go/main/App'
 import type { library } from '@wails/go/models'
 import type { BookProject } from '@/types/library'
@@ -341,25 +341,14 @@ function splitList(value: string) {
 
 watch(activeBookPath, loadWorkspace, { immediate: true })
 watch(selectedMaterial, syncDetailEditor)
+
+defineExpose({
+  refresh: loadWorkspace,
+})
 </script>
 
 <template>
   <section class="page-section">
-    <div class="section-heading">
-      <div>
-        <h1>素材库</h1>
-        <p>管理当前小说从拆解中沉淀出的可复用写作知识。</p>
-      </div>
-      <n-space>
-        <n-button @click="loadWorkspace">
-          <template #icon>
-            <RefreshCw :size="16" />
-          </template>
-          刷新
-        </n-button>
-      </n-space>
-    </div>
-
     <n-alert v-if="!activeBookPath" type="info">
       请先从书库打开一本小说。小说内素材会保存在该小说项目目录中。
     </n-alert>

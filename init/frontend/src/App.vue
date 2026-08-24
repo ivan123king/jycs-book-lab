@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // App.vue 负责第一阶段应用壳层路由和当前书摘要，不承载具体页面业务实现。
 import { computed, onMounted, ref } from 'vue'
-import { NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NScrollbar } from 'naive-ui'
+import { NButton, NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NScrollbar } from 'naive-ui'
+import { RefreshCw } from 'lucide-vue-next'
 import { OpenLastReadingSession } from '@wails/go/main/App'
 import AppSidebar from '@/components/app/AppSidebar.vue'
 import AppTopbar from '@/components/app/AppTopbar.vue'
@@ -27,6 +28,7 @@ const libraryMode = ref<'list' | 'import'>('list')
 const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
 const currentProject = ref<BookProject | null>(null)
 const readingSourceFocus = ref<ReadingSourceFocus | null>(null)
+const materialsPageRef = ref<InstanceType<typeof MaterialsPage> | null>(null)
 
 type ApplyCurrentBookOptions = {
   navigateToReading?: boolean
@@ -137,6 +139,10 @@ function clearCurrentBookIfRemoved(bookPath: string) {
   currentBook.value = { ...defaultCurrentBook }
 }
 
+function refreshMaterialsPage() {
+  materialsPageRef.value?.refresh()
+}
+
 onMounted(restoreLastOpenedBook)
 </script>
 
@@ -151,7 +157,16 @@ onMounted(restoreLastOpenedBook)
             v-if="activeView !== 'library'"
             :title="activeTitle"
             :current-book="currentBook"
-          />
+          >
+            <template v-if="activeView === 'materials'" #actions>
+              <n-button secondary @click="refreshMaterialsPage">
+                <template #icon>
+                  <RefreshCw :size="16" />
+                </template>
+                刷新
+              </n-button>
+            </template>
+          </AppTopbar>
 
           <n-layout-content :class="['content-shell', { 'content-shell-full': activeView === 'library' }]">
             <n-scrollbar :class="['content-scroll', { 'content-scroll-full': activeView === 'library' }]">
@@ -175,6 +190,7 @@ onMounted(restoreLastOpenedBook)
               />
               <MaterialsPage
                 v-else-if="activeView === 'materials'"
+                ref="materialsPageRef"
                 :project="currentProject"
                 @back-to-source="openReadingSource"
               />
