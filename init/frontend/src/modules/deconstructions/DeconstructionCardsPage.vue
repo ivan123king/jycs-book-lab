@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // DeconstructionCardsPage.vue 负责当前书写作手法拆解卡片的本地读取、筛选、编辑和来源追溯。
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   NAlert,
   NButton,
@@ -52,6 +52,7 @@ const editPlanTypeId = ref('')
 const editDimensionId = ref('')
 const editContent = ref('')
 const editTagInput = ref('')
+const tabIndentSpaces = '    '
 
 const activeBookPath = computed(() => props.project?.book.bookPath ?? '')
 
@@ -299,6 +300,32 @@ function showMaterialNotice() {
   noticeMessage.value = '小说内素材模块尚未实现，写作手法拆解已保留沉淀入口。'
 }
 
+/**
+ * 在写作手法拆解内容编辑区拦截 Tab，在当前光标位置插入 4 个普通空格。
+ */
+function handleEditContentKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !(event.target instanceof HTMLTextAreaElement)) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  insertTabSpaces(event.target)
+}
+
+function insertTabSpaces(textarea: HTMLTextAreaElement) {
+  const { selectionStart, selectionEnd } = textarea
+  editContent.value = `${editContent.value.slice(0, selectionStart)}${tabIndentSpaces}${editContent.value.slice(selectionEnd)}`
+  const nextPosition = selectionStart + tabIndentSpaces.length
+  restoreTextareaSelection(textarea, nextPosition, nextPosition)
+}
+
+function restoreTextareaSelection(textarea: HTMLTextAreaElement, selectionStart: number, selectionEnd: number) {
+  void nextTick(() => {
+    textarea.focus()
+    textarea.setSelectionRange(selectionStart, selectionEnd)
+  })
+}
+
 function uniqueOptions<T>(items: T[], getValue: (item: T) => string, getLabel: (item: T) => string) {
   const seen = new Set<string>()
   const options: Array<{ label: string; value: string }> = []
@@ -523,7 +550,12 @@ watch(editPlanTypeId, () => {
             <n-select v-model:value="editDimensionId" :options="editDimensionOptions" />
           </n-form-item>
           <n-form-item label="拆解内容">
-            <n-input v-model:value="editContent" type="textarea" :autosize="{ minRows: 8, maxRows: 14 }" />
+            <n-input
+              v-model:value="editContent"
+              type="textarea"
+              :autosize="{ minRows: 8, maxRows: 14 }"
+              @keydown="handleEditContentKeydown"
+            />
           </n-form-item>
           <n-form-item label="标签">
             <n-input v-model:value="editTagInput" placeholder="用逗号分隔，例如：氛围, 重逢" />

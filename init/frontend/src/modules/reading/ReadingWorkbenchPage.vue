@@ -61,7 +61,7 @@ type CapturedSelection = {
 
 const catalogPageSize = 30
 const defaultReaderFontSize = 18
-const chineseParagraphIndent = '　　'
+const tabIndentSpaces = '    '
 const readerMode = ref<ReaderMode>('read')
 const session = ref<library.ReadingSession | null>(null)
 const currentChapter = ref<library.BookChapter | null>(null)
@@ -666,26 +666,36 @@ function discardChapterEdit() {
 }
 
 /**
- * 在章节正文编辑区拦截 Tab，按中文正文习惯给当前行或选中行设置首行缩进。
+ * 在章节正文编辑区拦截 Tab，在当前光标位置插入 4 个普通空格。
  */
 function handleChapterContentKeydown(event: KeyboardEvent) {
-  handleTextareaIndentKeydown(event, editContent.value, (nextValue) => {
+  handleTextareaTabKeydown(event, editContent.value, (nextValue) => {
     editContent.value = nextValue
     editNotice.value = ''
   })
 }
 
 /**
- * 在章节小记编辑区拦截 Tab，保持与章节正文一致的中文首行缩进体验。
+ * 在章节小记编辑区拦截 Tab，保持与章节正文一致的 4 空格缩进体验。
  */
 function handleChapterMemoKeydown(event: KeyboardEvent) {
-  handleTextareaIndentKeydown(event, chapterMemoContent.value, (nextValue) => {
+  handleTextareaTabKeydown(event, chapterMemoContent.value, (nextValue) => {
     chapterMemoContent.value = nextValue
     chapterMemoNotice.value = ''
   })
 }
 
-function handleTextareaIndentKeydown(
+/**
+ * 在写作手法拆解看法输入区拦截 Tab，避免焦点跳到弹框里的下一个控件。
+ */
+function handleDeconstructionContentKeydown(event: KeyboardEvent) {
+  handleTextareaTabKeydown(event, deconstructionContent.value, (nextValue) => {
+    deconstructionContent.value = nextValue
+    cardError.value = ''
+  })
+}
+
+function handleTextareaTabKeydown(
   event: KeyboardEvent,
   content: string,
   updateContent: (nextValue: string) => void,
@@ -695,122 +705,19 @@ function handleTextareaIndentKeydown(
   }
   event.preventDefault()
   event.stopPropagation()
-  if (event.shiftKey) {
-    outdentTextareaSelection(event.target, content, updateContent)
-    return
-  }
-  indentTextareaSelection(event.target, content, updateContent)
+  insertTabSpacesIntoTextarea(event.target, content, updateContent)
 }
 
-function indentTextareaSelection(
+function insertTabSpacesIntoTextarea(
   textarea: HTMLTextAreaElement,
   content: string,
   updateContent: (nextValue: string) => void,
 ) {
   const { selectionStart, selectionEnd } = textarea
-  const lineStarts = getSelectedLineStarts(content, selectionStart, selectionEnd)
-  const nextValue = lineStarts
-    .slice()
-    .reverse()
-    .reduce(
-      (content, lineStart) =>
-        `${content.slice(0, lineStart)}${chineseParagraphIndent}${content.slice(lineStart)}`,
-      content,
-    )
+  const nextValue = `${content.slice(0, selectionStart)}${tabIndentSpaces}${content.slice(selectionEnd)}`
   updateContent(nextValue)
-  restoreTextareaSelection(
-    textarea,
-    adjustPositionAfterInsertions(selectionStart, lineStarts),
-    adjustPositionAfterInsertions(selectionEnd, lineStarts),
-  )
-}
-
-function outdentTextareaSelection(
-  textarea: HTMLTextAreaElement,
-  content: string,
-  updateContent: (nextValue: string) => void,
-) {
-  const { selectionStart, selectionEnd } = textarea
-  const removals = getSelectedLineStarts(content, selectionStart, selectionEnd)
-    .map((lineStart) => ({
-      start: lineStart,
-      length: getLineIndentLength(content, lineStart),
-    }))
-    .filter((removal) => removal.length > 0)
-  if (removals.length === 0) {
-    return
-  }
-  const nextValue = removals
-    .slice()
-    .reverse()
-    .reduce(
-      (content, removal) =>
-        `${content.slice(0, removal.start)}${content.slice(removal.start + removal.length)}`,
-      content,
-    )
-  updateContent(nextValue)
-  restoreTextareaSelection(
-    textarea,
-    adjustPositionAfterRemovals(selectionStart, removals),
-    adjustPositionAfterRemovals(selectionEnd, removals),
-  )
-}
-
-function getSelectedLineStarts(content: string, selectionStart: number, selectionEnd: number) {
-  const effectiveEnd = selectionEnd > selectionStart && content[selectionEnd - 1] === '\n' ? selectionEnd - 1 : selectionEnd
-  const firstLineStart = getLineStartAtOffset(content, selectionStart)
-  const lastLineStart = getLineStartAtOffset(content, effectiveEnd)
-  const lineStarts = [firstLineStart]
-  let nextLineBreak = content.indexOf('\n', firstLineStart)
-  while (nextLineBreak >= 0 && nextLineBreak + 1 <= lastLineStart) {
-    lineStarts.push(nextLineBreak + 1)
-    nextLineBreak = content.indexOf('\n', nextLineBreak + 1)
-  }
-  return lineStarts
-}
-
-function getLineStartAtOffset(content: string, offset: number) {
-  if (offset <= 0) {
-    return 0
-  }
-  return content.lastIndexOf('\n', offset - 1) + 1
-}
-
-function getLineIndentLength(content: string, lineStart: number) {
-  if (content.startsWith(chineseParagraphIndent, lineStart)) {
-    return chineseParagraphIndent.length
-  }
-  if (content.startsWith('  ', lineStart)) {
-    return 2
-  }
-  if (content.startsWith('\t', lineStart)) {
-    return 1
-  }
-  return 0
-}
-
-function adjustPositionAfterInsertions(position: number, lineStarts: number[]) {
-  return lineStarts.reduce(
-    (adjustedPosition, lineStart) =>
-      lineStart <= position ? adjustedPosition + chineseParagraphIndent.length : adjustedPosition,
-    position,
-  )
-}
-
-function adjustPositionAfterRemovals(position: number, removals: Array<{ start: number; length: number }>) {
-  let removedBefore = 0
-  let adjustedPosition = position
-  for (const removal of removals) {
-    if (position <= removal.start) {
-      continue
-    }
-    if (position <= removal.start + removal.length) {
-      return removal.start - removedBefore
-    }
-    removedBefore += removal.length
-    adjustedPosition -= removal.length
-  }
-  return adjustedPosition
+  const nextPosition = selectionStart + tabIndentSpaces.length
+  restoreTextareaSelection(textarea, nextPosition, nextPosition)
 }
 
 function restoreTextareaSelection(textarea: HTMLTextAreaElement, selectionStart: number, selectionEnd: number) {
@@ -1350,6 +1257,7 @@ onBeforeUnmount(() => {
             type="textarea"
             placeholder="写下你对这段原文的分析，例如表现手法、人物感情或结构作用。"
             :autosize="{ minRows: 5, maxRows: 8 }"
+            @keydown="handleDeconstructionContentKeydown"
           />
         </n-form-item>
         <n-form-item label="标签">
