@@ -80,6 +80,7 @@ func DetectChapters(text string) []BookChapter {
 	return chapters
 }
 
+// collectChapterMarkers 扫描原文中的章节标题行，记录标题和正文起止偏移。
 func collectChapterMarkers(text string) []chapterMarker {
 	lines := strings.SplitAfter(text, "\n")
 	markers := make([]chapterMarker, 0)
@@ -102,6 +103,7 @@ func collectChapterMarkers(text string) []chapterMarker {
 	return markers
 }
 
+// countTextRunes 统计正文有效字符数，忽略换行、制表和首行缩进空白。
 func countTextRunes(text string) int {
 	count := 0
 	for len(text) > 0 {
@@ -117,10 +119,12 @@ func countTextRunes(text string) int {
 	return count
 }
 
+// isIgnoredTextRune 判断字符是否不计入章节正文的有效字数。
 func isIgnoredTextRune(r rune) bool {
 	return r == '\r' || r == '\n' || r == '\t' || r == ' ' || r == '\u3000'
 }
 
+// hasReadableText 判断一段文本是否包含可作为章节正文保存的有效内容。
 func hasReadableText(text string) bool {
 	return countTextRunes(text) > 0
 }
