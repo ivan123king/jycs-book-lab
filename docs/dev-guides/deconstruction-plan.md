@@ -1,13 +1,20 @@
 # 拆解方案与模板指南
 
-本文定义拆解方案配置模块的产品流程、数据边界和第一阶段实现规则。拆解方案服务于阅读工作台中的“选中文字 -> 创建拆解”动作，不是普通笔记模板，也不是 AI 自动分析配置。
+本文定义拆解方案配置模块的产品流程、数据边界和第一阶段实现规则。拆解方案不是普通笔记模板，也不是 AI 自动分析配置；它负责让用户按自己的分析口径配置“类型 -> 维度 -> 看法”。
 
 ## 核心概念
 
-拆解方案属于单本小说项目。用户在阅读中选中原文后，创建拆解时按当前方案选择：
+拆解模板属于单本小说项目。用户可以为同一本书维护多条拆解路线，目前第一阶段先区分两类：
+
+| `analysisKind` | 中文名称 | 使用场景 |
+| --- | --- | --- |
+| `writingTechnique` | 写作模板 | 阅读中选中文字后，分析写作手法、人物感情、结构设计等。 |
+| `storyPlot` | 剧情模板 | 面向章节或多章节的剧情分析，页面入口和阅读侧交互暂不实现。 |
+
+写作模板的阅读侧流程：
 
 ```text
-拆解类型 -> 拆解维度 -> 自己的看法
+选中文字 -> 选择拆解类型 -> 选择拆解维度 -> 填写自己的看法
 ```
 
 示例：
@@ -21,7 +28,7 @@
 
 ## 项目目录结构
 
-导入小说入库时，应在单本小说项目目录中创建当前方案和模板目录：
+导入小说入库时，应在单本小说项目目录中创建当前方案引用文件和模板目录：
 
 ```text
 books/{bookId}/
@@ -30,26 +37,53 @@ books/{bookId}/
 ├── chapters/
 ├── deconstruction-plan.json
 └── deconstruction-templates/
-    └── 系统内置模板.json
+    ├── 系统内置写作手法.json
+    └── 系统内置剧情分析.json
 ```
 
 说明：
 
-1. `deconstruction-plan.json` 是当前书当前正在使用的拆解方案。
-2. `deconstruction-templates/` 保存当前书可选的拆解模板。
-3. `系统内置模板.json` 是导入小说时从系统默认方案复制出来的一份模板，用户可以修改。
+1. `deconstruction-plan.json` 只保存当前书各类拆解路线正在使用哪个模板文件，不保存模板内容。
+2. `deconstruction-templates/` 保存当前书所有可选拆解模板。
+3. `系统内置写作手法.json` 和 `系统内置剧情分析.json` 是导入小说时创建的两份默认模板，用户可以修改。
 4. 用户另存为模板时，按用户输入的模板名称在 `deconstruction-templates/` 下新增 JSON 文件。
-5. 模板目录属于单本小说项目目录，复制该小说项目目录即可带走当前方案和该书的模板列表。
+5. 模板目录属于单本小说项目目录，复制该小说项目目录即可带走当前方案引用和该书的模板列表。
 
-## 方案结构
+## 当前方案引用结构
 
-`deconstruction-plan.json` 和模板 JSON 使用同一结构：
+`deconstruction-plan.json` 使用引用结构，方便后续继续增加新的拆解路线：
 
 ```json
 {
   "version": 1,
   "bookId": "book-20260824-001",
-  "templateName": "系统内置模板",
+  "currentTemplates": {
+    "writingTechnique": "系统内置写作手法.json",
+    "storyPlot": "系统内置剧情分析.json"
+  },
+  "updatedAt": "2026-08-24T10:30:00+08:00"
+}
+```
+
+字段说明：
+
+| 字段 | 含义 |
+| --- | --- |
+| `version` | 结构版本。 |
+| `bookId` | 所属小说 ID。 |
+| `currentTemplates` | 每类 `analysisKind` 当前使用的模板文件名。 |
+| `updatedAt` | 最近保存当前模板引用的时间。 |
+
+## 模板结构
+
+模板 JSON 保存在 `deconstruction-templates/` 目录下：
+
+```json
+{
+  "version": 1,
+  "bookId": "book-20260824-001",
+  "analysisKind": "writingTechnique",
+  "templateName": "系统内置写作手法",
   "types": [
     {
       "id": "technique",
@@ -69,27 +103,27 @@ books/{bookId}/
 
 | 字段 | 含义 |
 | --- | --- |
-| `version` | 结构版本。 |
-| `bookId` | 所属小说 ID。模板从其他来源复制到当前书时，应写成当前书 ID。 |
+| `analysisKind` | 模板所属拆解路线，目前是 `writingTechnique` 或 `storyPlot`。 |
 | `templateName` | 展示给用户看的模板名称，让用户知道模板用途。 |
-| `types` | 拆解类型列表，例如表现手法、人物感情、结构设计。 |
-| `dimensions` | 类型下的拆解维度列表，例如环境描写、情绪变化、伏笔回收。 |
+| `types` | 拆解类型列表，例如表现手法、人物感情、剧情分析。 |
+| `dimensions` | 类型下的拆解维度，例如环境描写、情绪变化、核心事件、悬念设置。 |
 | `order` | 页面展示顺序。 |
-| `updatedAt` | 最近保存时间。 |
+
+剧情分析默认维度可以包含：核心事件、剧情推进、冲突变化、人物目标、人物关系变化、信息揭示、悬念设置、情绪曲线、伏笔与回收、本段剧情作用。
 
 ## 模板页面
 
 拆解方案页面应包含：
 
-1. 当前模板列表：读取 `deconstruction-templates/` 下所有 JSON。
-2. 当前使用方案：读取 `deconstruction-plan.json`。
-3. 模板名称：用户可修改当前模板的展示名称。
-4. 类型管理：新增、改名、删除或调整顺序。
-5. 维度管理：在某个类型下新增、改名、删除或调整顺序。
-6. 保存当前模板：保存正在编辑的模板文件。
-7. 另存为模板：用新模板名称创建一份新模板 JSON。
-8. 设为当前模板：用选中模板内容替换 `deconstruction-plan.json`。
-9. 如果保存的模板正是当前方案对应的模板，应同时更新 `deconstruction-plan.json`，并刷新页面内存中的当前方案数据。
+1. 模板类型切换：写作模板、剧情模板。
+2. 当前模板列表：读取 `deconstruction-templates/` 下所有 JSON，并按 `analysisKind` 过滤展示。
+3. 当前使用模板：按 `deconstruction-plan.json` 中当前 `analysisKind` 的引用高亮。
+4. 模板名称：用户可修改当前模板的展示名称。
+5. 类型管理：新增、改名、删除或调整顺序。
+6. 维度管理：在某个类型下新增、改名、删除或调整顺序。
+7. 保存模板：保存正在编辑的模板文件。
+8. 另存为模板：用新模板名称创建一份同 `analysisKind` 的新模板 JSON。
+9. 设为当前模板：只更新 `deconstruction-plan.json` 中对应 `analysisKind` 的模板引用。
 
 第一阶段删除类型或维度时，应先提示已有拆解卡片不会被改写。已有卡片保存的是创建时的快照，不依赖当前模板继续显示。
 
@@ -98,12 +132,12 @@ books/{bookId}/
 “设为当前模板”的含义是：
 
 1. 读取用户选中的模板 JSON。
-2. 将模板内容复制到当前书的 `deconstruction-plan.json`。
-3. `bookId` 写为当前书 ID。
-4. `templateName` 保持模板名称。
-5. 阅读工作台下一次打开或刷新后，用新的当前方案创建拆解。
+2. 校验模板 `analysisKind` 与当前页面类型一致。
+3. 将 `deconstruction-plan.json` 中对应 `analysisKind` 的引用改为该模板文件名。
+4. 不把模板内容复制到 `deconstruction-plan.json`。
+5. 后续打开阅读工作台时，写作手法拆解读取当前 `writingTechnique` 引用指向的模板。
 
-如果当前书已有拆解卡片，仍允许切换当前模板，因为历史卡片保存了类型名、维度名和分析内容快照，不依赖当前模板结构。
+如果当前书已有拆解卡片，仍允许切换当前模板，因为历史卡片保存了分析类型、类型名、维度名和分析内容快照，不依赖当前模板结构。
 
 ## 拆解卡片保存规则
 
@@ -114,6 +148,7 @@ books/{bookId}/
   "id": "deconstruction-20260824-0001",
   "bookId": "book-20260824-001",
   "sourceTextId": "source-20260824-0001",
+  "analysisKind": "writingTechnique",
   "planTypeId": "technique",
   "planTypeName": "表现手法",
   "dimensionId": "environment",
@@ -128,42 +163,46 @@ books/{bookId}/
 原则：
 
 1. `sourceTextId` 负责回到原文片段。
-2. `planTypeId`、`dimensionId` 保留创建时的结构标识。
-3. `planTypeName`、`dimensionName` 保存创建时展示名称，避免后续模板改名导致旧卡片显示变化。
-4. `content` 保存用户自己的分析看法。
-5. 修改模板不能批量改写历史卡片。
+2. `analysisKind` 保留创建拆解时使用的分析路线。
+3. `planTypeId`、`dimensionId` 保留创建时的结构标识。
+4. `planTypeName`、`dimensionName` 保存创建时展示名称，避免后续模板改名导致旧卡片显示变化。
+5. `content` 保存用户自己的分析看法。
+6. 修改模板不能批量改写历史卡片。
 
 ## 与阅读工作台关系
 
-阅读工作台创建拆解时：
+阅读工作台创建选文拆解时：
 
 1. 读取当前书 `deconstruction-plan.json`。
-2. 用户选中文字。
-3. 弹框展示原文片段。
-4. 用户选择拆解类型。
-5. 用户选择该类型下的拆解维度。
-6. 用户填写自己的看法。
-7. 保存拆解卡片和来源片段。
+2. 从 `currentTemplates.writingTechnique` 找到当前写作模板。
+3. 用户选中文字。
+4. 弹框展示原文片段。
+5. 用户选择拆解类型。
+6. 用户选择该类型下的拆解维度。
+7. 用户填写自己的看法。
+8. 保存拆解卡片和来源片段。
 
-阅读工作台不直接编辑模板。模板编辑只发生在拆解方案页面。
+阅读工作台暂不增加剧情拆解入口。剧情模板只先在方案模块中配置，具体页面和章节分析流程后续单独设计。
 
 ## 旧数据兼容
 
-旧项目可能只有早期的 `deconstruction-plan.json`，其中 `DeconstructionType` 直接带 `dimension` 和 `fields`：
+旧项目可能只有早期的 `deconstruction-plan.json`，其中保存的是完整模板内容，或者 `DeconstructionType` 直接带 `dimension` 和 `fields`：
 
-1. 打开旧方案时，应迁移为“类型 -> 维度”结构。
-2. 旧 `dimension` 可作为该类型下的一个维度。
-3. 旧 `fields` 不再作为创建拆解的表单字段；如需保留，可只用于迁移参考，不进入第一阶段 UI。
-4. 旧拆解卡片的 `fieldValues` 不应丢失。后续展示旧卡片时可把 `fieldValues` 作为历史内容摘要。
+1. 打开旧方案时，应先把旧 `deconstruction-plan.json` 中的完整模板内容迁移为 `deconstruction-templates/系统内置写作手法.json`。
+2. 然后把 `deconstruction-plan.json` 改写为当前模板引用结构。
+3. 旧 `dimension` 可作为该类型下的一个维度。
+4. 旧 `fields` 不再作为创建拆解的表单字段；如需保留，可只用于迁移参考，不进入第一阶段 UI。
+5. 旧拆解卡片的 `fieldValues` 不应丢失。后续展示旧卡片时可把 `fieldValues` 作为历史内容摘要。
 
 ## 边界
 
 第一阶段不做：
 
-1. 跨书模板中心。
-2. 多人协作或权限。
-3. 复杂版本回滚。
-4. AI 自动生成模板。
-5. 根据章节自动切换模板。
+1. 剧情拆解的阅读页或章节页入口。
+2. 跨书模板中心。
+3. 多人协作或权限。
+4. 复杂版本回滚。
+5. AI 自动生成模板。
+6. 根据章节自动切换模板。
 
-不同章节可能需要不同分析维度，用户可以在拆解方案页切换当前模板，再回到阅读工作台继续创建拆解。
+不同章节可能需要不同分析维度，用户可以在拆解方案页切换当前写作模板，再回到阅读工作台继续创建选文拆解。

@@ -29,7 +29,7 @@
 2. Chapter：章节。
 3. SourceText：原始文本或原文片段。
 4. ReadingContent：用户修正后的正文。
-5. DeconstructionPlan：拆解方案。
+5. DeconstructionPlanState：当前拆解方案引用。
 6. DeconstructionDimension：拆解维度。
 7. DeconstructionTemplate：拆解模板。
 8. DeconstructionCard：拆解卡片。
@@ -66,9 +66,9 @@ JSON 用于保存系统结构化数据，方便与 Go 结构体做序列化和�
 
 ```text
 Book 1 -> N Chapter
-Book 1 -> 1 DeconstructionPlan
-DeconstructionPlan 1 -> N DeconstructionDimension
-DeconstructionDimension 1 -> N DeconstructionField
+Book 1 -> 1 DeconstructionPlanState
+DeconstructionPlanState 1 -> N DeconstructionTemplate reference
+DeconstructionTemplate 1 -> N DeconstructionDimension
 SourceText 1 -> N DeconstructionCard
 DeconstructionCard N -> N Tag
 Material N -> N Category
@@ -115,14 +115,15 @@ Chapter 1 Title
 
 ## 拆解方案
 
-拆解方案属于具体书籍。模板只是创建方案的起点；当前书目录中必须保存当前方案 `deconstruction-plan.json`，并在 `deconstruction-templates/` 目录中保存可选模板。
+拆解方案属于具体书籍。当前书目录中必须保存当前方案引用 `deconstruction-plan.json`，并在 `deconstruction-templates/` 目录中保存可选模板。`deconstruction-plan.json` 不保存模板内容，只保存不同 `analysisKind` 当前引用的模板文件名，例如 `writingTechnique` 和 `storyPlot`。
 
 第一阶段拆解方案只配置：
 
-1. 模板名称。
-2. 拆解类型。
-3. 类型下的拆解维度。
-4. 类型和维度的顺序。
+1. 模板所属分析类型 `analysisKind`。
+2. 模板名称。
+3. 拆解类型。
+4. 类型下的拆解维度。
+5. 类型和维度的顺序。
 
 阅读中创建拆解时，用户选择类型和维度，然后填写自己的看法。不要再把方案设计成单行文本、多行文本、单选、多选、数字、评分等字段表单。
 

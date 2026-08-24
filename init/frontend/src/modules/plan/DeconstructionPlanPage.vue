@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // DeconstructionPlanPage.vue 负责当前书拆解模板列表、类型维度编辑和当前模板切换。
 import { computed, onMounted, ref, watch } from 'vue'
-import { NAlert, NButton, NCard, NInput, NList, NListItem, NSpace, NSpin, NTag, NThing } from 'naive-ui'
+import { NAlert, NButton, NButtonGroup, NCard, NInput, NList, NListItem, NSpace, NSpin, NTag, NThing } from 'naive-ui'
 import { CheckCircle, Copy, Plus, Save, Trash2 } from 'lucide-vue-next'
 import {
   OpenDeconstructionPlanWorkspace,
@@ -19,7 +19,16 @@ const props = defineProps<{
 
 const workspace = ref<library.DeconstructionPlanWorkspace | null>(null)
 const draftPlan = ref<library.DeconstructionPlan | null>(null)
-const selectedTemplateFile = ref('')
+type AnalysisKind = 'writingTechnique' | 'storyPlot'
+
+// 方案页先维护两类模板；阅读侧当前只消费 writingTechnique。
+const analysisKindOptions: Array<{ value: AnalysisKind; label: string }> = [
+  { value: 'writingTechnique', label: '写作模板' },
+  { value: 'storyPlot', label: '剧情模板' },
+]
+
+const activeAnalysisKind = ref<AnalysisKind>('writingTechnique')
+const selectedTemplateFiles = ref<Record<string, string>>({})
 const activeTypeId = ref('')
 const saveAsName = ref('')
 const loading = ref(false)
@@ -28,6 +37,24 @@ const pageError = ref('')
 const pageNotice = ref('')
 
 const activeBookPath = computed(() => props.project?.book.bookPath ?? '')
+
+// 每类模板保留自己的选中项，用户在写作模板和剧情模板之间切换时不丢失上下文。
+const selectedTemplateFile = computed({
+  get: () => selectedTemplateFiles.value[activeAnalysisKind.value] ?? '',
+  set: (fileName: string) => {
+    selectedTemplateFiles.value = { ...selectedTemplateFiles.value, [activeAnalysisKind.value]: fileName }
+  },
+})
+const activeKindLabel = computed(() => analysisKindOptions.find((item) => item.value === activeAnalysisKind.value)?.label ?? '模板')
+const activeTemplates = computed(() => {
+  return workspace.value?.templates.filter((template) => template.analysisKind === activeAnalysisKind.value) ?? []
+})
+const currentTemplateFileName = computed(() => {
+  return workspace.value?.currentTemplateFileNames?.[activeAnalysisKind.value] ?? ''
+})
+const currentPlan = computed(() => {
+  return workspace.value?.currentPlans?.[activeAnalysisKind.value] ?? workspace.value?.currentPlan ?? null
+})
 
 const activeType = computed(() => {
   return draftPlan.value?.types.find((item) => item.id === activeTypeId.value) ?? draftPlan.value?.types[0] ?? null
@@ -57,14 +84,17 @@ async function loadWorkspace() {
 
 async function applyWorkspace(nextWorkspace: library.DeconstructionPlanWorkspace, preferredTemplateFile = '') {
   workspace.value = nextWorkspace
-  draftPlan.value = clonePlan(nextWorkspace.currentPlan)
+  draftPlan.value = currentPlan.value ? clonePlan(currentPlan.value) : null
   const nextSelectedFile =
-    preferredTemplateFile || nextWorkspace.currentTemplateFileName || selectedTemplateFile.value || nextWorkspace.templates[0]?.fileName || ''
+    preferredTemplateFile || currentTemplateFileName.value || selectedTemplateFile.value || activeTemplates.value[0]?.fileName || ''
   if (nextSelectedFile) {
     selectedTemplateFile.value = nextSelectedFile
     draftPlan.value = clonePlan(await OpenDeconstructionTemplate(activeBookPath.value, nextSelectedFile))
   }
-  activeTypeId.value = draftPlan.value.types[0]?.id ?? ''
+  if (draftPlan.value) {
+    draftPlan.value.analysisKind = activeAnalysisKind.value
+  }
+  activeTypeId.value = draftPlan.value?.types[0]?.id ?? ''
 }
 
 async function selectTemplate(fileName: string) {
@@ -77,6 +107,7 @@ async function selectTemplate(fileName: string) {
   pageNotice.value = ''
   try {
     draftPlan.value = clonePlan(await OpenDeconstructionTemplate(activeBookPath.value, fileName))
+    draftPlan.value.analysisKind = activeAnalysisKind.value
     activeTypeId.value = draftPlan.value.types[0]?.id ?? ''
   } catch (error) {
     pageError.value = getErrorMessage(error)
@@ -94,8 +125,10 @@ async function saveTemplate(overwrite: boolean) {
   pageError.value = ''
   pageNotice.value = ''
   try {
+    draftPlan.value.analysisKind = activeAnalysisKind.value
     const loaded = await SaveDeconstructionTemplate({
       bookPath: activeBookPath.value,
+      analysisKind: activeAnalysisKind.value,
       templateName,
       fileName: overwrite ? selectedTemplateFile.value : '',
       plan: draftPlan.value,
@@ -103,7 +136,10 @@ async function saveTemplate(overwrite: boolean) {
     } as library.SaveDeconstructionTemplateRequest)
     const savedFileName = overwrite
       ? selectedTemplateFile.value
-      : (loaded.templates.find((template) => template.name === templateName.trim())?.fileName ?? loaded.templates[0]?.fileName ?? '')
+      : (loaded.templates.find((template) => template.analysisKind === activeAnalysisKind.value && template.name === templateName.trim())
+          ?.fileName ??
+        loaded.templates.find((template) => template.analysisKind === activeAnalysisKind.value)?.fileName ??
+        '')
     await applyWorkspace(loaded, savedFileName)
     pageNotice.value = overwrite ? '模板已保存。' : '已另存为新模板。'
     if (!overwrite) {
@@ -126,10 +162,14 @@ async function setSelectedTemplateAsCurrent() {
   try {
     const loaded = await SetCurrentDeconstructionTemplate({
       bookPath: activeBookPath.value,
+      analysisKind: activeAnalysisKind.value,
       fileName: selectedTemplateFile.value,
     })
     await applyWorkspace(loaded, selectedTemplateFile.value)
-    pageNotice.value = '已设为当前模板，阅读拆解会使用这份内容。'
+    pageNotice.value =
+      activeAnalysisKind.value === 'writingTechnique'
+        ? '已设为当前写作模板，阅读选文拆解会使用这份内容。'
+        : '已设为当前剧情模板。'
   } catch (error) {
     pageError.value = getErrorMessage(error)
   } finally {
@@ -188,7 +228,9 @@ function removeDimension(dimensionId: string) {
 }
 
 function clonePlan(plan: library.DeconstructionPlan) {
-  return JSON.parse(JSON.stringify(plan)) as library.DeconstructionPlan
+  const cloned = JSON.parse(JSON.stringify(plan)) as library.DeconstructionPlan
+  cloned.analysisKind = (cloned.analysisKind || activeAnalysisKind.value) as string
+  return cloned
 }
 
 watch(
@@ -198,6 +240,15 @@ watch(
   },
 )
 
+watch(activeAnalysisKind, () => {
+  saveAsName.value = ''
+  pageError.value = ''
+  pageNotice.value = ''
+  if (workspace.value) {
+    void applyWorkspace(workspace.value)
+  }
+})
+
 onMounted(loadWorkspace)
 </script>
 
@@ -206,12 +257,12 @@ onMounted(loadWorkspace)
     <div class="section-heading">
       <div>
         <h1>拆解方案</h1>
-        <p>按当前书管理拆解模板，阅读中选文后会按当前模板选择类型和维度。</p>
+        <p>按当前书管理写作模板和剧情模板；阅读中选文拆解暂时只使用当前写作模板。</p>
       </div>
       <n-space>
         <n-button
           type="primary"
-          :disabled="!selectedTemplateFile || selectedTemplateFile === workspace?.currentTemplateFileName"
+          :disabled="!selectedTemplateFile || selectedTemplateFile === currentTemplateFileName"
           :loading="saving"
           @click="setSelectedTemplateAsCurrent"
         >
@@ -231,21 +282,33 @@ onMounted(loadWorkspace)
       <n-alert v-if="pageError" type="error" class="page-alert">{{ pageError }}</n-alert>
       <n-alert v-else-if="pageNotice" type="success" class="page-alert">{{ pageNotice }}</n-alert>
 
+      <n-button-group class="kind-switch">
+        <n-button
+          v-for="item in analysisKindOptions"
+          :key="item.value"
+          :type="activeAnalysisKind === item.value ? 'primary' : 'default'"
+          @click="activeAnalysisKind = item.value"
+        >
+          {{ item.label }}
+        </n-button>
+      </n-button-group>
+
       <div class="plan-layout">
-        <n-card :bordered="false" title="模板列表" class="dimension-card">
-          <n-list>
-            <n-list-item v-for="template in workspace?.templates ?? []" :key="template.fileName">
+        <n-card :bordered="false" :title="`${activeKindLabel}列表`" class="dimension-card">
+          <n-alert v-if="activeTemplates.length === 0" type="info">当前还没有该类型模板。</n-alert>
+          <n-list v-else>
+            <n-list-item v-for="template in activeTemplates" :key="template.fileName">
               <button
                 class="template-list-item"
                 :class="{
-                  active: workspace?.currentTemplateFileName === template.fileName,
+                  active: currentTemplateFileName === template.fileName,
                   selected: selectedTemplateFile === template.fileName,
                 }"
                 @click="selectTemplate(template.fileName)"
               >
                 <span>
                   {{ template.name }}
-                  <n-tag v-if="workspace?.currentTemplateFileName === template.fileName" size="small" type="success">
+                  <n-tag v-if="currentTemplateFileName === template.fileName" size="small" type="success">
                     当前方案
                   </n-tag>
                 </span>
@@ -255,10 +318,10 @@ onMounted(loadWorkspace)
           </n-list>
         </n-card>
 
-        <n-card :bordered="false" title="模板内容" class="fields-card">
+        <n-card :bordered="false" :title="`${activeKindLabel}内容`" class="fields-card">
           <template v-if="draftPlan">
             <div class="template-name-row">
-              <n-input v-model:value="draftPlan.templateName" placeholder="模板名称，例如：人物感情分析模板" />
+              <n-input v-model:value="draftPlan.templateName" placeholder="模板名称，例如：人物感情分析模板、章节剧情节奏模板" />
               <n-button :loading="saving" @click="saveTemplate(true)">
                 <template #icon>
                   <Save :size="16" />
@@ -278,7 +341,7 @@ onMounted(loadWorkspace)
             </div>
 
             <n-alert type="warning" class="page-alert">
-              修改模板不会改写已经保存的拆解卡片；历史卡片会保留创建时的类型、维度和看法。
+              修改模板不会改写已经保存的拆解卡片；历史卡片会保留创建时的模板类型、拆解类型、维度和看法。
             </n-alert>
 
             <div class="plan-editor-grid">

@@ -304,7 +304,8 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 		filepath.Join(bookPath, "source-texts", "source-texts.json"),
 		filepath.Join(bookPath, "deconstructions", "deconstruction-cards.json"),
 		filepath.Join(bookPath, "deconstruction-plan.json"),
-		filepath.Join(bookPath, "deconstruction-templates", "系统内置模板.json"),
+		filepath.Join(bookPath, "deconstruction-templates", systemWritingTemplateFileName),
+		filepath.Join(bookPath, "deconstruction-templates", systemStoryTemplateFileName),
 	} {
 		if _, err := os.Stat(requiredPath); err != nil {
 			t.Fatalf("缺少阅读数据文件 %s: %v", requiredPath, err)
@@ -402,6 +403,9 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if created.Card.PlanTypeName != "表现手法" || created.Card.DimensionName != "环境描写" || created.Card.Content != "制造迟疑感" {
 		t.Fatalf("拆解卡片未保存类型、维度和内容快照: %+v", created.Card)
 	}
+	if created.Card.AnalysisKind != analysisKindWritingTechnique {
+		t.Fatalf("拆解卡片类型 = %s, want %s", created.Card.AnalysisKind, analysisKindWritingTechnique)
+	}
 	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
 		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
 	}
@@ -429,14 +433,20 @@ func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("打开拆解方案工作区失败: %v", err)
 	}
-	if workspace.CurrentPlan.TemplateName != systemTemplateName {
-		t.Fatalf("当前模板名 = %s, want %s", workspace.CurrentPlan.TemplateName, systemTemplateName)
+	if workspace.CurrentPlan.TemplateName != systemWritingTemplateName {
+		t.Fatalf("当前模板名 = %s, want %s", workspace.CurrentPlan.TemplateName, systemWritingTemplateName)
 	}
-	if len(workspace.Templates) != 1 || workspace.Templates[0].FileName != systemTemplateFileName {
+	if len(workspace.Templates) != 2 {
+		t.Fatalf("模板数量 = %d, want 2: %+v", len(workspace.Templates), workspace.Templates)
+	}
+	if workspace.Templates[0].FileName != systemWritingTemplateFileName || workspace.Templates[1].FileName != systemStoryTemplateFileName {
 		t.Fatalf("模板列表不正确: %+v", workspace.Templates)
 	}
-	if workspace.CurrentTemplateFileName != systemTemplateFileName {
-		t.Fatalf("当前模板文件 = %s, want %s", workspace.CurrentTemplateFileName, systemTemplateFileName)
+	if workspace.CurrentTemplateFileName != systemWritingTemplateFileName {
+		t.Fatalf("当前模板文件 = %s, want %s", workspace.CurrentTemplateFileName, systemWritingTemplateFileName)
+	}
+	if workspace.CurrentTemplateFileNames[analysisKindStoryPlot] != systemStoryTemplateFileName {
+		t.Fatalf("当前剧情模板文件 = %s, want %s", workspace.CurrentTemplateFileNames[analysisKindStoryPlot], systemStoryTemplateFileName)
 	}
 
 	customPlan := workspace.CurrentPlan
@@ -454,19 +464,21 @@ func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
 	}
 	workspace, err = SaveDeconstructionTemplate(SaveDeconstructionTemplateRequest{
 		BookPath:     bookPath,
+		AnalysisKind: analysisKindWritingTechnique,
 		TemplateName: "感情线模板",
 		Plan:         customPlan,
 	})
 	if err != nil {
 		t.Fatalf("另存模板失败: %v", err)
 	}
-	if len(workspace.Templates) != 2 {
-		t.Fatalf("另存后模板数量 = %d, want 2", len(workspace.Templates))
+	if len(workspace.Templates) != 3 {
+		t.Fatalf("另存后模板数量 = %d, want 3", len(workspace.Templates))
 	}
 
 	workspace, err = SetCurrentDeconstructionTemplate(SetCurrentDeconstructionTemplateRequest{
-		BookPath: bookPath,
-		FileName: "感情线模板.json",
+		BookPath:     bookPath,
+		AnalysisKind: analysisKindWritingTechnique,
+		FileName:     "感情线模板.json",
 	})
 	if err != nil {
 		t.Fatalf("设为当前模板失败: %v", err)
@@ -481,6 +493,7 @@ func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
 	customPlan.Types[0].Dimensions[0].Name = "情绪迟疑"
 	workspace, err = SaveDeconstructionTemplate(SaveDeconstructionTemplateRequest{
 		BookPath:     bookPath,
+		AnalysisKind: analysisKindWritingTechnique,
 		TemplateName: "感情线模板",
 		FileName:     "感情线模板.json",
 		Plan:         customPlan,
@@ -491,6 +504,14 @@ func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
 	}
 	if workspace.CurrentPlan.Types[0].Dimensions[0].Name != "情绪迟疑" {
 		t.Fatalf("保存当前模板后未同步当前方案: %+v", workspace.CurrentPlan.Types[0].Dimensions[0])
+	}
+	planStatePath := filepath.Join(bookPath, "deconstruction-plan.json")
+	var planState DeconstructionPlanState
+	if err := readJSONFile(planStatePath, &planState); err != nil {
+		t.Fatalf("读取当前方案引用失败: %v", err)
+	}
+	if len(planState.CurrentTemplates) == 0 || len(planState.CurrentTemplates[analysisKindWritingTechnique]) == 0 {
+		t.Fatalf("当前方案不应再保存模板内容: %+v", planState)
 	}
 }
 

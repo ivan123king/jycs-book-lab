@@ -12,7 +12,7 @@
    - 页面设计、页面结构、功能模块拆分：`docs/dev-guides/page-design/overall-page-structure.md`
    - 书库、小说导入、书库数据结构：`docs/dev-guides/book-library/design-principles.md`、`docs/dev-guides/book-library/data-structure.md`、`docs/dev-guides/book-library/page-structure.md`
    - 阅读工作台、阅读/编辑 TAB、目录分页、选文拆解弹框、阅读位置：`docs/dev-guides/reading-workbench/design-principles.md`、`docs/dev-guides/reading-workbench/page-structure.md`、`docs/dev-guides/reading-workbench/data-structure.md`
-   - 拆解方案、拆解模板、阅读中创建拆解的类型和维度配置：`docs/dev-guides/deconstruction-plan.md`
+   - 拆解方案、拆解模板、`analysisKind`、当前模板引用、阅读中创建拆解的类型和维度配置：`docs/dev-guides/deconstruction-plan.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
    - 注释、文件组织、协作规则：`docs/dev-guides/coding-rules.md`
@@ -45,7 +45,7 @@
 | `docs/dev-guides/reading-workbench/design-principles.md` | 阅读工作台设计原则，说明阅读优先、阅读/编辑 TAB、目录按钮、选文拆解弹框和功能边界。 | 阅读工作台、正文阅读、正文编辑、选文创建拆解相关任务。 |
 | `docs/dev-guides/reading-workbench/page-structure.md` | 阅读工作台页面结构，说明上一页/下一页阅读区、右侧目录分页弹层、拆解弹框和页面状态。 | 阅读工作台布局、目录交互、阅读位置恢复、拆解弹框页面任务。 |
 | `docs/dev-guides/reading-workbench/data-structure.md` | 阅读工作台数据结构，说明阅读位置、目录分页计算、原文片段和拆解卡片来源引用。 | 阅读位置保存、选文来源追溯、拆解卡片数据结构和旧数据迁移任务。 |
-| `docs/dev-guides/deconstruction-plan.md` | 拆解方案与模板指南，说明当前方案、模板目录、类型、维度、模板切换和卡片快照保存规则。 | 拆解方案页、拆解模板、阅读拆解表单、拆解卡片保存结构相关任务。 |
+| `docs/dev-guides/deconstruction-plan.md` | 拆解方案与模板指南，说明当前方案引用、模板目录、`analysisKind`、类型、维度、模板切换和卡片快照保存规则。 | 拆解方案页、拆解模板、阅读拆解表单、拆解卡片保存结构相关任务。 |
 | `docs/dev-guides/backend-local-data.md` | 本地后端、数据模型、存储和业务服务指南。 | 文件导入、章节识别、数据库、搜索、标签、素材、来源追溯相关任务。 |
 | `docs/dev-guides/coding-rules.md` | 编码、注释、命名和协作规则。 | 新增文件、模块、函数、复杂业务逻辑、数据结构变更任务。 |
 

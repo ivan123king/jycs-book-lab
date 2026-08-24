@@ -394,6 +394,7 @@ export namespace library {
 	    id: string;
 	    bookId: string;
 	    sourceTextId: string;
+	    analysisKind: string;
 	    planTypeId: string;
 	    planTypeName: string;
 	    dimensionId: string;
@@ -413,6 +414,7 @@ export namespace library {
 	        this.id = source["id"];
 	        this.bookId = source["bookId"];
 	        this.sourceTextId = source["sourceTextId"];
+	        this.analysisKind = source["analysisKind"];
 	        this.planTypeId = source["planTypeId"];
 	        this.planTypeName = source["planTypeName"];
 	        this.dimensionId = source["dimensionId"];
@@ -571,6 +573,7 @@ export namespace library {
 	export class DeconstructionPlan {
 	    version: number;
 	    bookId: string;
+	    analysisKind: string;
 	    templateName: string;
 	    types: DeconstructionType[];
 	    updatedAt: string;
@@ -583,6 +586,7 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.bookId = source["bookId"];
+	        this.analysisKind = source["analysisKind"];
 	        this.templateName = source["templateName"];
 	        this.types = this.convertValues(source["types"], DeconstructionType);
 	        this.updatedAt = source["updatedAt"];
@@ -606,9 +610,28 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeconstructionPlanState {
+	    version: number;
+	    bookId: string;
+	    currentTemplates: Record<string, string>;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeconstructionPlanState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.bookId = source["bookId"];
+	        this.currentTemplates = source["currentTemplates"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class DeconstructionTemplateSummary {
 	    name: string;
 	    fileName: string;
+	    analysisKind: string;
 	    updatedAt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -619,12 +642,16 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
 	        this.fileName = source["fileName"];
+	        this.analysisKind = source["analysisKind"];
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
 	export class DeconstructionPlanWorkspace {
 	    currentPlan: DeconstructionPlan;
 	    currentTemplateFileName: string;
+	    currentPlanState: DeconstructionPlanState;
+	    currentPlans: Record<string, DeconstructionPlan>;
+	    currentTemplateFileNames: Record<string, string>;
 	    templates: DeconstructionTemplateSummary[];
 	
 	    static createFrom(source: any = {}) {
@@ -635,6 +662,9 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.currentPlan = this.convertValues(source["currentPlan"], DeconstructionPlan);
 	        this.currentTemplateFileName = source["currentTemplateFileName"];
+	        this.currentPlanState = this.convertValues(source["currentPlanState"], DeconstructionPlanState);
+	        this.currentPlans = this.convertValues(source["currentPlans"], DeconstructionPlan, true);
+	        this.currentTemplateFileNames = source["currentTemplateFileNames"];
 	        this.templates = this.convertValues(source["templates"], DeconstructionTemplateSummary);
 	    }
 	
@@ -898,6 +928,7 @@ export namespace library {
 	}
 	export class SaveDeconstructionTemplateRequest {
 	    bookPath: string;
+	    analysisKind: string;
 	    templateName: string;
 	    fileName: string;
 	    plan: DeconstructionPlan;
@@ -910,6 +941,7 @@ export namespace library {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bookPath = source["bookPath"];
+	        this.analysisKind = source["analysisKind"];
 	        this.templateName = source["templateName"];
 	        this.fileName = source["fileName"];
 	        this.plan = this.convertValues(source["plan"], DeconstructionPlan);
@@ -974,6 +1006,7 @@ export namespace library {
 	}
 	export class SetCurrentDeconstructionTemplateRequest {
 	    bookPath: string;
+	    analysisKind: string;
 	    fileName: string;
 	
 	    static createFrom(source: any = {}) {
@@ -983,6 +1016,7 @@ export namespace library {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bookPath = source["bookPath"];
+	        this.analysisKind = source["analysisKind"];
 	        this.fileName = source["fileName"];
 	    }
 	}
