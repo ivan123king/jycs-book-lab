@@ -54,6 +54,7 @@ type CapturedSelection = {
 
 const catalogPageSize = 30
 const defaultReaderFontSize = 18
+const chineseParagraphIndent = '　　'
 const readerMode = ref<ReaderMode>('read')
 const session = ref<library.ReadingSession | null>(null)
 const currentChapter = ref<library.BookChapter | null>(null)
@@ -572,6 +573,133 @@ function discardChapterEdit() {
   editError.value = ''
 }
 
+/**
+ * 在章节正文编辑区拦截 Tab，按中文正文习惯给当前行或选中行设置首行缩进。
+ */
+function handleChapterContentKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !(event.target instanceof HTMLTextAreaElement)) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  editNotice.value = ''
+  if (event.shiftKey) {
+    outdentChapterContentSelection(event.target)
+    return
+  }
+  indentChapterContentSelection(event.target)
+}
+
+function indentChapterContentSelection(textarea: HTMLTextAreaElement) {
+  const { selectionStart, selectionEnd } = textarea
+  const lineStarts = getSelectedLineStarts(editContent.value, selectionStart, selectionEnd)
+  const nextValue = lineStarts
+    .slice()
+    .reverse()
+    .reduce(
+      (content, lineStart) =>
+        `${content.slice(0, lineStart)}${chineseParagraphIndent}${content.slice(lineStart)}`,
+      editContent.value,
+    )
+  editContent.value = nextValue
+  restoreTextareaSelection(
+    textarea,
+    adjustPositionAfterInsertions(selectionStart, lineStarts),
+    adjustPositionAfterInsertions(selectionEnd, lineStarts),
+  )
+}
+
+function outdentChapterContentSelection(textarea: HTMLTextAreaElement) {
+  const { selectionStart, selectionEnd } = textarea
+  const removals = getSelectedLineStarts(editContent.value, selectionStart, selectionEnd)
+    .map((lineStart) => ({
+      start: lineStart,
+      length: getLineIndentLength(editContent.value, lineStart),
+    }))
+    .filter((removal) => removal.length > 0)
+  if (removals.length === 0) {
+    return
+  }
+  const nextValue = removals
+    .slice()
+    .reverse()
+    .reduce(
+      (content, removal) =>
+        `${content.slice(0, removal.start)}${content.slice(removal.start + removal.length)}`,
+      editContent.value,
+    )
+  editContent.value = nextValue
+  restoreTextareaSelection(
+    textarea,
+    adjustPositionAfterRemovals(selectionStart, removals),
+    adjustPositionAfterRemovals(selectionEnd, removals),
+  )
+}
+
+function getSelectedLineStarts(content: string, selectionStart: number, selectionEnd: number) {
+  const effectiveEnd = selectionEnd > selectionStart && content[selectionEnd - 1] === '\n' ? selectionEnd - 1 : selectionEnd
+  const firstLineStart = getLineStartAtOffset(content, selectionStart)
+  const lastLineStart = getLineStartAtOffset(content, effectiveEnd)
+  const lineStarts = [firstLineStart]
+  let nextLineBreak = content.indexOf('\n', firstLineStart)
+  while (nextLineBreak >= 0 && nextLineBreak + 1 <= lastLineStart) {
+    lineStarts.push(nextLineBreak + 1)
+    nextLineBreak = content.indexOf('\n', nextLineBreak + 1)
+  }
+  return lineStarts
+}
+
+function getLineStartAtOffset(content: string, offset: number) {
+  if (offset <= 0) {
+    return 0
+  }
+  return content.lastIndexOf('\n', offset - 1) + 1
+}
+
+function getLineIndentLength(content: string, lineStart: number) {
+  if (content.startsWith(chineseParagraphIndent, lineStart)) {
+    return chineseParagraphIndent.length
+  }
+  if (content.startsWith('  ', lineStart)) {
+    return 2
+  }
+  if (content.startsWith('\t', lineStart)) {
+    return 1
+  }
+  return 0
+}
+
+function adjustPositionAfterInsertions(position: number, lineStarts: number[]) {
+  return lineStarts.reduce(
+    (adjustedPosition, lineStart) =>
+      lineStart <= position ? adjustedPosition + chineseParagraphIndent.length : adjustedPosition,
+    position,
+  )
+}
+
+function adjustPositionAfterRemovals(position: number, removals: Array<{ start: number; length: number }>) {
+  let removedBefore = 0
+  let adjustedPosition = position
+  for (const removal of removals) {
+    if (position <= removal.start) {
+      continue
+    }
+    if (position <= removal.start + removal.length) {
+      return removal.start - removedBefore
+    }
+    removedBefore += removal.length
+    adjustedPosition -= removal.length
+  }
+  return adjustedPosition
+}
+
+function restoreTextareaSelection(textarea: HTMLTextAreaElement, selectionStart: number, selectionEnd: number) {
+  void nextTick(() => {
+    textarea.focus()
+    textarea.setSelectionRange(selectionStart, selectionEnd)
+  })
+}
+
 function syncEditor() {
   editTitle.value = currentChapter.value?.title ?? ''
   editContent.value = chapterContent.value
@@ -898,6 +1026,7 @@ onBeforeUnmount(() => {
                 v-model:value="editContent"
                 type="textarea"
                 :autosize="{ minRows: 18, maxRows: 26 }"
+                @keydown="handleChapterContentKeydown"
               />
             </n-form-item>
           </n-form>

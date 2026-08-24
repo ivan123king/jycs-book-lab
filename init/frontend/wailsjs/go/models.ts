@@ -819,19 +819,20 @@ export namespace library {
 	        this.fontSize = source["fontSize"];
 	    }
 	}
-
-
+	
+	
+	
 	export class SplitChapterRequest {
 	    bookPath: string;
 	    chapterId: string;
 	    newTitle: string;
 	    newContent: string;
 	    remainingContent: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SplitChapterRequest(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bookPath = source["bookPath"];
@@ -847,11 +848,11 @@ export namespace library {
 	    remainingChapter: BookChapter;
 	    newContent: string;
 	    remainingContent: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SplitChapterResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.project = this.convertValues(source["project"], BookProject);
@@ -860,7 +861,7 @@ export namespace library {
 	        this.newContent = source["newContent"];
 	        this.remainingContent = source["remainingContent"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -881,3 +882,4 @@ export namespace library {
 	}
 
 }
+
