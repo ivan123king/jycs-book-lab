@@ -86,6 +86,20 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class BuildMaterialDraftFromCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BuildMaterialDraftFromCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	    }
+	}
 	export class ChapterContentRequest {
 	    bookPath: string;
 	    chapterId: string;
@@ -456,6 +470,7 @@ export namespace library {
 	    content: string;
 	    fieldValues: Record<string, string>;
 	    tagIds: string[];
+	    materialIds: string[];
 	    createdAt: string;
 	    updatedAt: string;
 	
@@ -476,6 +491,7 @@ export namespace library {
 	        this.content = source["content"];
 	        this.fieldValues = source["fieldValues"];
 	        this.tagIds = source["tagIds"];
+	        this.materialIds = source["materialIds"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
@@ -521,6 +537,228 @@ export namespace library {
 	        this.sourceText = this.convertValues(source["sourceText"], SourceText);
 	        this.card = this.convertValues(source["card"], DeconstructionCard);
 	        this.sourceTexts = this.convertValues(source["sourceTexts"], SourceTextCollection);
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CreateMaterialFromCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    categoryIds: string[];
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateMaterialFromCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.categoryIds = source["categoryIds"];
+	        this.tagIds = source["tagIds"];
+	    }
+	}
+	export class MaterialCollection {
+	    version: number;
+	    items: Material[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialCollection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.items = this.convertValues(source["items"], Material);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MaterialSourceSnapshot {
+	    bookName: string;
+	    chapterTitle: string;
+	    deconstructionTitle: string;
+	    planTypeName: string;
+	    dimensionName: string;
+	    sourceSummary: string;
+	    selectedText: string;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialSourceSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookName = source["bookName"];
+	        this.chapterTitle = source["chapterTitle"];
+	        this.deconstructionTitle = source["deconstructionTitle"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionName = source["dimensionName"];
+	        this.sourceSummary = source["sourceSummary"];
+	        this.selectedText = source["selectedText"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class MaterialChapterRef {
+	    chapterId: string;
+	    chapterOrder: number;
+	    chapterTitleSnapshot: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialChapterRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapterId = source["chapterId"];
+	        this.chapterOrder = source["chapterOrder"];
+	        this.chapterTitleSnapshot = source["chapterTitleSnapshot"];
+	    }
+	}
+	export class MaterialSourceRef {
+	    sourceKind: string;
+	    deconstructionId: string;
+	    sourceTextId: string;
+	    chapterRefs: MaterialChapterRef[];
+	    snapshot: MaterialSourceSnapshot;
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialSourceRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceKind = source["sourceKind"];
+	        this.deconstructionId = source["deconstructionId"];
+	        this.sourceTextId = source["sourceTextId"];
+	        this.chapterRefs = this.convertValues(source["chapterRefs"], MaterialChapterRef);
+	        this.snapshot = this.convertValues(source["snapshot"], MaterialSourceSnapshot);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Material {
+	    id: string;
+	    bookId: string;
+	    materialType: string;
+	    title: string;
+	    summary: string;
+	    contentPath: string;
+	    categoryIds: string[];
+	    tagIds: string[];
+	    sourceRefs: MaterialSourceRef[];
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Material(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.bookId = source["bookId"];
+	        this.materialType = source["materialType"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.contentPath = source["contentPath"];
+	        this.categoryIds = source["categoryIds"];
+	        this.tagIds = source["tagIds"];
+	        this.sourceRefs = this.convertValues(source["sourceRefs"], MaterialSourceRef);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CreateMaterialResult {
+	    material: Material;
+	    materials: MaterialCollection;
+	    materialContents: Record<string, string>;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateMaterialResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.material = this.convertValues(source["material"], Material);
+	        this.materials = this.convertValues(source["materials"], MaterialCollection);
+	        this.materialContents = source["materialContents"];
 	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
 	    }
 	
@@ -827,6 +1065,54 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeleteMaterialRequest {
+	    bookPath: string;
+	    materialId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteMaterialRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.materialId = source["materialId"];
+	    }
+	}
+	export class DeleteMaterialResult {
+	    materials: MaterialCollection;
+	    materialContents: Record<string, string>;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteMaterialResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.materials = this.convertValues(source["materials"], MaterialCollection);
+	        this.materialContents = source["materialContents"];
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ImportChapterPreview {
 	    id: string;
 	    order: number;
@@ -898,6 +1184,91 @@ export namespace library {
 	
 	
 	
+	
+	
+	
+	export class MaterialDraft {
+	    materialType: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    categoryIds: string[];
+	    tagIds: string[];
+	    sourceRefs: MaterialSourceRef[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialDraft(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.materialType = source["materialType"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.categoryIds = source["categoryIds"];
+	        this.tagIds = source["tagIds"];
+	        this.sourceRefs = this.convertValues(source["sourceRefs"], MaterialSourceRef);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	export class MaterialWorkspace {
+	    project: BookProject;
+	    materials: MaterialCollection;
+	    materialContents: Record<string, string>;
+	    sourceTexts: SourceTextCollection;
+	    deconstructionCards: DeconstructionCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new MaterialWorkspace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], BookProject);
+	        this.materials = this.convertValues(source["materials"], MaterialCollection);
+	        this.materialContents = source["materialContents"];
+	        this.sourceTexts = this.convertValues(source["sourceTexts"], SourceTextCollection);
+	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ReadingPosition {
 	    chapterId: string;
 	    chapterOrder: number;
@@ -1304,6 +1675,64 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.card = this.convertValues(source["card"], DeconstructionCard);
 	        this.deconstructionCards = this.convertValues(source["deconstructionCards"], DeconstructionCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateMaterialRequest {
+	    bookPath: string;
+	    materialId: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    categoryIds: string[];
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateMaterialRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.materialId = source["materialId"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.categoryIds = source["categoryIds"];
+	        this.tagIds = source["tagIds"];
+	    }
+	}
+	export class UpdateMaterialResult {
+	    material: Material;
+	    materials: MaterialCollection;
+	    materialContents: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateMaterialResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.material = this.convertValues(source["material"], Material);
+	        this.materials = this.convertValues(source["materials"], MaterialCollection);
+	        this.materialContents = source["materialContents"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

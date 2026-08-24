@@ -38,6 +38,23 @@ type SourceTextCollection = booklibrary.SourceTextCollection
 type DeconstructionCard = booklibrary.DeconstructionCard
 type DeconstructionCardCollection = booklibrary.DeconstructionCardCollection
 type DeconstructionCardsWorkspace = booklibrary.DeconstructionCardsWorkspace
+type MaterialChapterRef = booklibrary.MaterialChapterRef
+type MaterialSourceSnapshot = booklibrary.MaterialSourceSnapshot
+type MaterialSourceRef = booklibrary.MaterialSourceRef
+type Material = booklibrary.Material
+type MaterialCollection = booklibrary.MaterialCollection
+type MaterialWorkspace = booklibrary.MaterialWorkspace
+type MaterialDraft = booklibrary.MaterialDraft
+type BuildMaterialDraftFromCardRequest = booklibrary.BuildMaterialDraftFromCardRequest
+type CreateMaterialFromCardRequest = booklibrary.CreateMaterialFromCardRequest
+type CreateMaterialResult = booklibrary.CreateMaterialResult
+type UpdateMaterialRequest = booklibrary.UpdateMaterialRequest
+type UpdateMaterialResult = booklibrary.UpdateMaterialResult
+type DeleteMaterialRequest = booklibrary.DeleteMaterialRequest
+type DeleteMaterialResult = booklibrary.DeleteMaterialResult
+type GlobalMaterialIndex = booklibrary.GlobalMaterialIndex
+type GlobalMaterialIndexItem = booklibrary.GlobalMaterialIndexItem
+type GlobalMaterialIndexSnapshot = booklibrary.GlobalMaterialIndexSnapshot
 type ChapterMemo = booklibrary.ChapterMemo
 type ChapterMemoCollection = booklibrary.ChapterMemoCollection
 type ReadingSession = booklibrary.ReadingSession
@@ -269,6 +286,38 @@ func (a *App) UpdateDeconstructionCard(request UpdateDeconstructionCardRequest) 
 // DeleteDeconstructionCard 删除当前书写作手法拆解卡片，并按需清理来源片段。
 func (a *App) DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDeconstructionCardResult, error) {
 	return booklibrary.DeleteDeconstructionCard(request)
+}
+
+// OpenMaterialWorkspace 读取当前书小说内素材和来源上下文。
+func (a *App) OpenMaterialWorkspace(bookPath string) (MaterialWorkspace, error) {
+	workspace, err := booklibrary.OpenMaterialWorkspace(bookPath)
+	if err != nil {
+		return MaterialWorkspace{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
+		return MaterialWorkspace{}, err
+	}
+	return workspace, nil
+}
+
+// BuildMaterialDraftFromCard 从写作手法拆解卡片生成可编辑素材草稿。
+func (a *App) BuildMaterialDraftFromCard(request BuildMaterialDraftFromCardRequest) (MaterialDraft, error) {
+	return booklibrary.BuildMaterialDraftFromCard(request)
+}
+
+// CreateMaterialFromCard 保存从写作手法拆解卡片沉淀出的小说内素材。
+func (a *App) CreateMaterialFromCard(request CreateMaterialFromCardRequest) (CreateMaterialResult, error) {
+	return booklibrary.CreateMaterialFromCard(request)
+}
+
+// UpdateMaterial 更新当前书素材元数据和 TXT 正文。
+func (a *App) UpdateMaterial(request UpdateMaterialRequest) (UpdateMaterialResult, error) {
+	return booklibrary.UpdateMaterial(request)
+}
+
+// DeleteMaterial 删除当前书素材并清理卡片反向引用。
+func (a *App) DeleteMaterial(request DeleteMaterialRequest) (DeleteMaterialResult, error) {
+	return booklibrary.DeleteMaterial(request)
 }
 
 // OpenDeconstructionPlanWorkspace 读取当前书的当前拆解方案和模板列表。

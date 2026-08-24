@@ -272,6 +272,7 @@ func TestOpenBookProjectRecoversLeadingUnknownChapter(t *testing.T) {
 
 // TestReadingWorkbenchPersistsStateAndDeconstruction 覆盖阅读位置、章节编辑和选文拆解的本地闭环。
 func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
+	t.Setenv("AppData", t.TempDir())
 	libraryPath := t.TempDir()
 	sourcePath := filepath.Join(t.TempDir(), "雾港来信.txt")
 	sourceText := "第一章 远处的灯\n雨在码头上铺开。\n\n第二章 借宿人\n她把信收进外套。\n"
@@ -451,6 +452,80 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if updatedCard.Card.PlanTypeName != "人物感情" || updatedCard.Card.DimensionName != "情绪变化" ||
 		updatedCard.Card.Content != "制造迟疑感，并用动作压住情绪" || len(updatedCard.Card.TagIDs) != 2 {
 		t.Fatalf("写作手法拆解更新结果不正确: %+v", updatedCard.Card)
+	}
+	draft, err := BuildMaterialDraftFromCard(BuildMaterialDraftFromCardRequest{
+		BookPath: bookPath,
+		CardID:   created.Card.ID,
+	})
+	if err != nil {
+		t.Fatalf("生成素材草稿失败: %v", err)
+	}
+	if draft.MaterialType != analysisKindWritingTechnique || len(draft.SourceRefs) != 1 ||
+		draft.Summary != "她把信收进外套" || draft.Content != "制造迟疑感，并用动作压住情绪" ||
+		draft.SourceRefs[0].Snapshot.PlanTypeName != "人物感情" || draft.SourceRefs[0].Snapshot.DimensionName != "情绪变化" {
+		t.Fatalf("素材草稿未按原文和拆解说明生成: %+v", draft)
+	}
+	materialResult, err := CreateMaterialFromCard(CreateMaterialFromCardRequest{
+		BookPath: bookPath,
+		CardID:   created.Card.ID,
+		Title:    "动作压住情绪的迟疑写法",
+		Summary:  "    她把信收进外套",
+		Content:  "    动作先于情绪说明，可以压住人物的直接表达。",
+		TagIDs:   []string{"动作", "防备"},
+	})
+	if err != nil {
+		t.Fatalf("创建素材失败: %v", err)
+	}
+	if len(materialResult.Materials.Items) != 1 || materialResult.Material.ContentPath == "" {
+		t.Fatalf("素材落盘元数据不正确: %+v", materialResult)
+	}
+	if materialResult.Material.Summary != "    她把信收进外套" || len(materialResult.Material.CategoryIDs) != 0 {
+		t.Fatalf("素材原文或分类不正确: %+v", materialResult.Material)
+	}
+	materialTextPath := filepath.Join(bookPath, filepath.FromSlash(materialResult.Material.ContentPath))
+	materialContent, err := os.ReadFile(materialTextPath)
+	if err != nil {
+		t.Fatalf("读取素材正文失败: %v", err)
+	}
+	if string(materialContent) != "    动作先于情绪说明，可以压住人物的直接表达。" {
+		t.Fatalf("素材正文 TXT = %q", string(materialContent))
+	}
+	if len(materialResult.DeconstructionCards.Items) != 1 || len(materialResult.DeconstructionCards.Items[0].MaterialIDs) != 1 {
+		t.Fatalf("拆解卡片未同步素材引用: %+v", materialResult.DeconstructionCards.Items)
+	}
+	materialWorkspace, err := OpenMaterialWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("打开素材库失败: %v", err)
+	}
+	if materialWorkspace.MaterialContents[materialResult.Material.ID] == "" || len(materialWorkspace.SourceTexts.Items) != 1 {
+		t.Fatalf("素材工作区缺少正文或来源: %+v", materialWorkspace)
+	}
+	updatedMaterial, err := UpdateMaterial(UpdateMaterialRequest{
+		BookPath:   bookPath,
+		MaterialID: materialResult.Material.ID,
+		Title:      "动作压住情绪",
+		Summary:    "    她把信收进外套，又看了一眼窗外。",
+		Content:    "    用动作压住情绪，可以让人物显得更克制。",
+		TagIDs:     []string{"动作", "动作"},
+	})
+	if err != nil {
+		t.Fatalf("更新素材失败: %v", err)
+	}
+	if updatedMaterial.Material.Summary != "    她把信收进外套，又看了一眼窗外。" || len(updatedMaterial.Material.TagIDs) != 1 {
+		t.Fatalf("素材更新结果不正确: %+v", updatedMaterial.Material)
+	}
+	deletedMaterial, err := DeleteMaterial(DeleteMaterialRequest{
+		BookPath:   bookPath,
+		MaterialID: materialResult.Material.ID,
+	})
+	if err != nil {
+		t.Fatalf("删除素材失败: %v", err)
+	}
+	if len(deletedMaterial.Materials.Items) != 0 || len(deletedMaterial.DeconstructionCards.Items[0].MaterialIDs) != 0 {
+		t.Fatalf("删除素材后引用未清理: %+v", deletedMaterial)
+	}
+	if _, err := os.Stat(materialTextPath); !os.IsNotExist(err) {
+		t.Fatalf("素材正文 TXT 未删除，stat err = %v", err)
 	}
 	deletedCard, err := DeleteDeconstructionCard(DeleteDeconstructionCardRequest{
 		BookPath: bookPath,

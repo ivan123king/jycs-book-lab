@@ -199,6 +199,10 @@ func DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDe
 	if err != nil {
 		return DeleteDeconstructionCardResult{}, err
 	}
+	materials, err := loadMaterials(bookPath)
+	if err != nil {
+		return DeleteDeconstructionCardResult{}, err
+	}
 
 	removedSourceTextID := ""
 	keptCards := make([]DeconstructionCard, 0, len(cards.Items))
@@ -213,7 +217,7 @@ func DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDe
 		return DeleteDeconstructionCardResult{}, fmt.Errorf("拆解卡片不存在: %s", request.CardID)
 	}
 	cards.Items = keptCards
-	sourceTexts = removeUnreferencedSourceText(sourceTexts, cards, removedSourceTextID)
+	sourceTexts = removeUnreferencedSourceText(sourceTexts, cards, materials, removedSourceTextID)
 
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
 		return DeleteDeconstructionCardResult{}, fmt.Errorf("保存拆解卡片失败: %w", err)
@@ -331,6 +335,9 @@ func normalizeWritingTechniqueCardCollection(collection DeconstructionCardCollec
 		if card.TagIDs == nil {
 			card.TagIDs = []string{}
 		}
+		if card.MaterialIDs == nil {
+			card.MaterialIDs = []string{}
+		}
 		items = append(items, card)
 	}
 	collection.Items = items
@@ -338,10 +345,17 @@ func normalizeWritingTechniqueCardCollection(collection DeconstructionCardCollec
 }
 
 // removeUnreferencedSourceText 在删除卡片后清理无人引用的选文来源，保留来源与卡片的分离模型。
-func removeUnreferencedSourceText(sourceTexts SourceTextCollection, cards DeconstructionCardCollection, sourceTextID string) SourceTextCollection {
+func removeUnreferencedSourceText(sourceTexts SourceTextCollection, cards DeconstructionCardCollection, materials MaterialCollection, sourceTextID string) SourceTextCollection {
 	for _, card := range cards.Items {
 		if card.SourceTextID == sourceTextID {
 			return sourceTexts
+		}
+	}
+	for _, material := range materials.Items {
+		for _, sourceRef := range material.SourceRefs {
+			if sourceRef.SourceTextID == sourceTextID {
+				return sourceTexts
+			}
 		}
 	}
 	keptSources := make([]SourceText, 0, len(sourceTexts.Items))

@@ -78,7 +78,7 @@ func GetChapterContent(request ChapterContentRequest) (ChapterContentResult, err
 
 // ensureReadingSupportFiles 为旧项目补齐阅读、选文、拆解和模板相关正式数据文件。
 func ensureReadingSupportFiles(bookPath string, project BookProject) error {
-	for _, relativeDir := range []string{"reading", "source-texts", "deconstructions"} {
+	for _, relativeDir := range []string{"reading", "source-texts", "deconstructions", "materials", materialTextsDir} {
 		if err := os.MkdirAll(filepath.Join(bookPath, relativeDir), 0o755); err != nil {
 			return fmt.Errorf("创建阅读数据目录失败: %w", err)
 		}
@@ -111,6 +111,11 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 	}
 	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath))); errors.Is(err, os.ErrNotExist) {
 		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath)), ChapterMemoCollection{Version: 1, Items: []ChapterMemo{}}); err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(materialsRelativePath))); errors.Is(err, os.ErrNotExist) {
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(materialsRelativePath)), MaterialCollection{Version: 1, Items: []Material{}}); err != nil {
 			return err
 		}
 	}

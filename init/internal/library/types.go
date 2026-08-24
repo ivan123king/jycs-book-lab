@@ -239,6 +239,7 @@ type DeconstructionCard struct {
 	Content       string            `json:"content"`
 	FieldValues   map[string]string `json:"fieldValues"`
 	TagIDs        []string          `json:"tagIds"`
+	MaterialIDs   []string          `json:"materialIds"`
 	CreatedAt     string            `json:"createdAt"`
 	UpdatedAt     string            `json:"updatedAt"`
 }
@@ -255,6 +256,155 @@ type DeconstructionCardsWorkspace struct {
 	Plan                DeconstructionPlan           `json:"plan"`
 	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// MaterialChapterRef 保存素材来源章节的可跳转 ID 和标题快照。
+type MaterialChapterRef struct {
+	ChapterID            string `json:"chapterId"`
+	ChapterOrder         int    `json:"chapterOrder"`
+	ChapterTitleSnapshot string `json:"chapterTitleSnapshot"`
+}
+
+// MaterialSourceSnapshot 保存来源失效时仍可阅读的基础上下文。
+type MaterialSourceSnapshot struct {
+	BookName            string `json:"bookName"`
+	ChapterTitle        string `json:"chapterTitle"`
+	DeconstructionTitle string `json:"deconstructionTitle"`
+	PlanTypeName        string `json:"planTypeName"`
+	DimensionName       string `json:"dimensionName"`
+	SourceSummary       string `json:"sourceSummary"`
+	SelectedText        string `json:"selectedText"`
+	CreatedAt           string `json:"createdAt"`
+}
+
+// MaterialSourceRef 记录素材由哪类拆解沉淀而来，保留跳转 ID 和快照。
+type MaterialSourceRef struct {
+	SourceKind       string                 `json:"sourceKind"`
+	DeconstructionID string                 `json:"deconstructionId"`
+	SourceTextID     string                 `json:"sourceTextId"`
+	ChapterRefs      []MaterialChapterRef   `json:"chapterRefs"`
+	Snapshot         MaterialSourceSnapshot `json:"snapshot"`
+}
+
+// Material 是单本小说项目目录中的正式素材元数据，正文保存在 contentPath 指向的 TXT。
+type Material struct {
+	ID           string              `json:"id"`
+	BookID       string              `json:"bookId"`
+	MaterialType string              `json:"materialType"`
+	Title        string              `json:"title"`
+	Summary      string              `json:"summary"`
+	ContentPath  string              `json:"contentPath"`
+	CategoryIDs  []string            `json:"categoryIds"`
+	TagIDs       []string            `json:"tagIds"`
+	SourceRefs   []MaterialSourceRef `json:"sourceRefs"`
+	CreatedAt    string              `json:"createdAt"`
+	UpdatedAt    string              `json:"updatedAt"`
+}
+
+// MaterialCollection 对应当前小说项目目录中的 materials/materials.json。
+type MaterialCollection struct {
+	Version int        `json:"version"`
+	Items   []Material `json:"items"`
+}
+
+// MaterialWorkspace 返回小说内素材页需要的正式素材、正文和来源上下文。
+type MaterialWorkspace struct {
+	Project             BookProject                  `json:"project"`
+	Materials           MaterialCollection           `json:"materials"`
+	MaterialContents    map[string]string            `json:"materialContents"`
+	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// MaterialDraft 是从拆解卡片生成的可编辑素材草稿，不直接落盘。
+type MaterialDraft struct {
+	MaterialType string              `json:"materialType"`
+	Title        string              `json:"title"`
+	Summary      string              `json:"summary"`
+	Content      string              `json:"content"`
+	CategoryIDs  []string            `json:"categoryIds"`
+	TagIDs       []string            `json:"tagIds"`
+	SourceRefs   []MaterialSourceRef `json:"sourceRefs"`
+}
+
+// BuildMaterialDraftFromCardRequest 指定要从哪张写作手法拆解卡片生成素材草稿。
+type BuildMaterialDraftFromCardRequest struct {
+	BookPath string `json:"bookPath"`
+	CardID   string `json:"cardId"`
+}
+
+// CreateMaterialFromCardRequest 保存用户基于拆解卡片二次整理后的素材。
+type CreateMaterialFromCardRequest struct {
+	BookPath    string   `json:"bookPath"`
+	CardID      string   `json:"cardId"`
+	Title       string   `json:"title"`
+	Summary     string   `json:"summary"`
+	Content     string   `json:"content"`
+	CategoryIDs []string `json:"categoryIds"`
+	TagIDs      []string `json:"tagIds"`
+}
+
+// CreateMaterialResult 返回保存后的素材、完整集合和正文映射。
+type CreateMaterialResult struct {
+	Material            Material                     `json:"material"`
+	Materials           MaterialCollection           `json:"materials"`
+	MaterialContents    map[string]string            `json:"materialContents"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// UpdateMaterialRequest 承载素材详情页可编辑的元数据和正文。
+type UpdateMaterialRequest struct {
+	BookPath    string   `json:"bookPath"`
+	MaterialID  string   `json:"materialId"`
+	Title       string   `json:"title"`
+	Summary     string   `json:"summary"`
+	Content     string   `json:"content"`
+	CategoryIDs []string `json:"categoryIds"`
+	TagIDs      []string `json:"tagIds"`
+}
+
+// UpdateMaterialResult 返回编辑后的素材集合和正文映射，便于前端无二次读取刷新。
+type UpdateMaterialResult struct {
+	Material         Material           `json:"material"`
+	Materials        MaterialCollection `json:"materials"`
+	MaterialContents map[string]string  `json:"materialContents"`
+}
+
+// DeleteMaterialRequest 指定要从当前书素材库删除的素材。
+type DeleteMaterialRequest struct {
+	BookPath   string `json:"bookPath"`
+	MaterialID string `json:"materialId"`
+}
+
+// DeleteMaterialResult 返回删除后的素材、正文和卡片引用集合。
+type DeleteMaterialResult struct {
+	Materials           MaterialCollection           `json:"materials"`
+	MaterialContents    map[string]string            `json:"materialContents"`
+	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+}
+
+// GlobalMaterialIndex 是应用系统数据目录中的跨书素材引用索引，不是素材正式数据源。
+type GlobalMaterialIndex struct {
+	Version int                       `json:"version"`
+	Items   []GlobalMaterialIndexItem `json:"items"`
+}
+
+// GlobalMaterialIndexItem 保存全局素材列表所需的引用和展示快照。
+type GlobalMaterialIndexItem struct {
+	BookID       string                      `json:"bookId"`
+	BookPath     string                      `json:"bookPath"`
+	MaterialID   string                      `json:"materialId"`
+	MaterialType string                      `json:"materialType"`
+	Snapshot     GlobalMaterialIndexSnapshot `json:"snapshot"`
+	IndexedAt    string                      `json:"indexedAt"`
+}
+
+// GlobalMaterialIndexSnapshot 保存来源项目不可用时的必要展示信息。
+type GlobalMaterialIndexSnapshot struct {
+	Title    string   `json:"title"`
+	Summary  string   `json:"summary"`
+	BookName string   `json:"bookName"`
+	TagNames []string `json:"tagNames"`
 }
 
 // ChapterMemo 保存用户针对单个章节写下的自由小记，随小说项目目录迁移。

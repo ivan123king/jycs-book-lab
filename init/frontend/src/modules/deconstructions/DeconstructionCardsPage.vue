@@ -18,6 +18,8 @@ import {
 } from 'naive-ui'
 import { BookOpen, Edit3, Eye, Library, MapPinned, Save, Search, Sparkles, Trash2 } from 'lucide-vue-next'
 import {
+  BuildMaterialDraftFromCard,
+  CreateMaterialFromCard,
   DeleteDeconstructionCard,
   OpenDeconstructionCardsWorkspace,
   UpdateDeconstructionCard,
@@ -48,10 +50,16 @@ const tagFilter = ref<string | null>(null)
 const selectedCardId = ref('')
 const detailOpen = ref(false)
 const editOpen = ref(false)
+const materialOpen = ref(false)
 const editPlanTypeId = ref('')
 const editDimensionId = ref('')
 const editContent = ref('')
 const editTagInput = ref('')
+const materialTitle = ref('')
+const materialSummary = ref('')
+const materialContent = ref('')
+const materialTagInput = ref('')
+const materialSaving = ref(false)
 const tabIndentSpaces = '    '
 
 const activeBookPath = computed(() => props.project?.book.bookPath ?? '')
@@ -295,9 +303,60 @@ function emitBackToSource() {
   })
 }
 
-function showMaterialNotice() {
-  detailOpen.value = false
-  noticeMessage.value = '小说内素材模块尚未实现，写作手法拆解已保留沉淀入口。'
+async function openMaterialDraft() {
+  const bookPath = activeBookPath.value
+  const card = selectedCard.value
+  if (!bookPath || !card) {
+    return
+  }
+  errorMessage.value = ''
+  noticeMessage.value = ''
+  try {
+    const draft = await BuildMaterialDraftFromCard({
+      bookPath,
+      cardId: card.id,
+    } as library.BuildMaterialDraftFromCardRequest)
+    materialTitle.value = draft.title
+    materialSummary.value = draft.summary
+    materialContent.value = draft.content
+    materialTagInput.value = draft.tagIds.join(', ')
+    materialOpen.value = true
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  }
+}
+
+async function saveMaterialDraft() {
+  const bookPath = activeBookPath.value
+  const card = selectedCard.value
+  if (!bookPath || !card) {
+    return
+  }
+  materialSaving.value = true
+  errorMessage.value = ''
+  noticeMessage.value = ''
+  try {
+    const result = await CreateMaterialFromCard({
+      bookPath,
+      cardId: card.id,
+      title: materialTitle.value,
+      summary: materialSummary.value,
+      content: materialContent.value,
+      categoryIds: [],
+      tagIds: splitTags(materialTagInput.value),
+    } as library.CreateMaterialFromCardRequest)
+    if (workspace.value) {
+      workspace.value.deconstructionCards = result.deconstructionCards
+    }
+    selectedCardId.value = card.id
+    materialOpen.value = false
+    detailOpen.value = false
+    noticeMessage.value = '已沉淀为小说内素材。'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    materialSaving.value = false
+  }
 }
 
 /**
@@ -310,6 +369,38 @@ function handleEditContentKeydown(event: KeyboardEvent) {
   event.preventDefault()
   event.stopPropagation()
   insertTabSpaces(event.target)
+}
+
+/**
+ * 在素材原文草稿输入区拦截 Tab，保持多行文本里按 Tab 插入 4 个普通空格。
+ */
+function handleMaterialSummaryKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !(event.target instanceof HTMLTextAreaElement)) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  const textarea = event.target
+  const { selectionStart, selectionEnd } = textarea
+  materialSummary.value = `${materialSummary.value.slice(0, selectionStart)}${tabIndentSpaces}${materialSummary.value.slice(selectionEnd)}`
+  const nextPosition = selectionStart + tabIndentSpaces.length
+  restoreTextareaSelection(textarea, nextPosition, nextPosition)
+}
+
+/**
+ * 在素材拆解说明草稿输入区拦截 Tab，保持多行文本里按 Tab 插入 4 个普通空格。
+ */
+function handleMaterialContentKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !(event.target instanceof HTMLTextAreaElement)) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  const textarea = event.target
+  const { selectionStart, selectionEnd } = textarea
+  materialContent.value = `${materialContent.value.slice(0, selectionStart)}${tabIndentSpaces}${materialContent.value.slice(selectionEnd)}`
+  const nextPosition = selectionStart + tabIndentSpaces.length
+  restoreTextareaSelection(textarea, nextPosition, nextPosition)
 }
 
 function insertTabSpaces(textarea: HTMLTextAreaElement) {
@@ -518,11 +609,57 @@ watch(editPlanTypeId, () => {
             </template>
             回到原文
           </n-button>
-          <n-button type="primary" secondary @click="showMaterialNotice">
+          <n-button type="primary" secondary @click="openMaterialDraft">
             <template #icon>
               <Sparkles :size="16" />
             </template>
             沉淀为素材
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <n-modal
+      v-model:show="materialOpen"
+      preset="card"
+      title="沉淀为素材"
+      class="writing-card-modal"
+      :bordered="false"
+    >
+      <template v-if="selectedCard">
+        <n-form label-placement="top">
+          <n-form-item label="素材标题">
+            <n-input v-model:value="materialTitle" placeholder="写作时可复用的素材标题" />
+          </n-form-item>
+          <n-form-item label="原文">
+            <n-input
+              v-model:value="materialSummary"
+              type="textarea"
+              :autosize="{ minRows: 3, maxRows: 5 }"
+              @keydown="handleMaterialSummaryKeydown"
+            />
+          </n-form-item>
+          <n-form-item label="拆解说明">
+            <n-input
+              v-model:value="materialContent"
+              type="textarea"
+              :autosize="{ minRows: 9, maxRows: 16 }"
+              @keydown="handleMaterialContentKeydown"
+            />
+          </n-form-item>
+          <n-form-item label="标签">
+            <n-input v-model:value="materialTagInput" placeholder="用逗号分隔，例如：氛围, 重逢" />
+          </n-form-item>
+        </n-form>
+      </template>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="materialOpen = false">取消</n-button>
+          <n-button type="primary" :loading="materialSaving" @click="saveMaterialDraft">
+            <template #icon>
+              <Sparkles :size="16" />
+            </template>
+            保存素材
           </n-button>
         </n-space>
       </template>

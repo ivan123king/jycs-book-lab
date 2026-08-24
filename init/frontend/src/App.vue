@@ -9,7 +9,6 @@ import {
   defaultCurrentBook,
   demoAnalysisRows,
   demoChapters,
-  demoMaterials,
 } from '@/data/workbenchFixtures'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import DeconstructionCardsPage from '@/modules/deconstructions/DeconstructionCardsPage.vue'
@@ -176,7 +175,8 @@ onMounted(restoreLastOpenedBook)
               />
               <MaterialsPage
                 v-else-if="activeView === 'materials'"
-                :materials="demoMaterials"
+                :project="currentProject"
+                @back-to-source="openReadingSource"
               />
               <DeconstructionPlanPage
                 v-else-if="activeView === 'plan'"
