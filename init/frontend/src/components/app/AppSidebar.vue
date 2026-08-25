@@ -30,6 +30,11 @@ const navOptions: MenuOption[] = [
     icon: renderMenuIcon(Library),
   },
   {
+    label: '书库素材',
+    key: 'libraryMaterials',
+    icon: renderMenuIcon(Bookmark),
+  },
+  {
     type: 'group',
     label: '当前书',
     key: 'workspace',

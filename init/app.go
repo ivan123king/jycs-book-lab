@@ -52,6 +52,15 @@ type UpdateMaterialRequest = booklibrary.UpdateMaterialRequest
 type UpdateMaterialResult = booklibrary.UpdateMaterialResult
 type DeleteMaterialRequest = booklibrary.DeleteMaterialRequest
 type DeleteMaterialResult = booklibrary.DeleteMaterialResult
+type LibraryMaterial = booklibrary.LibraryMaterial
+type LibraryMaterialCollection = booklibrary.LibraryMaterialCollection
+type LibraryMaterialListItem = booklibrary.LibraryMaterialListItem
+type LibraryMaterialPageRequest = booklibrary.LibraryMaterialPageRequest
+type LibraryMaterialPage = booklibrary.LibraryMaterialPage
+type LibraryMaterialBookOption = booklibrary.LibraryMaterialBookOption
+type CreateLibraryMaterialRequest = booklibrary.CreateLibraryMaterialRequest
+type UpdateLibraryMaterialRequest = booklibrary.UpdateLibraryMaterialRequest
+type DeleteLibraryMaterialRequest = booklibrary.DeleteLibraryMaterialRequest
 type GlobalMaterialIndex = booklibrary.GlobalMaterialIndex
 type GlobalMaterialIndexItem = booklibrary.GlobalMaterialIndexItem
 type GlobalMaterialIndexSnapshot = booklibrary.GlobalMaterialIndexSnapshot
@@ -318,6 +327,26 @@ func (a *App) UpdateMaterial(request UpdateMaterialRequest) (UpdateMaterialResul
 // DeleteMaterial 删除当前书素材并清理卡片反向引用。
 func (a *App) DeleteMaterial(request DeleteMaterialRequest) (DeleteMaterialResult, error) {
 	return booklibrary.DeleteMaterial(request)
+}
+
+// OpenLibraryMaterialPage 分页读取书库素材页数据，包含单书素材引用和书库自有素材。
+func (a *App) OpenLibraryMaterialPage(request LibraryMaterialPageRequest) (LibraryMaterialPage, error) {
+	return booklibrary.OpenLibraryMaterialPage(request)
+}
+
+// CreateLibraryMaterial 在书库目录中直接创建一条自有素材。
+func (a *App) CreateLibraryMaterial(request CreateLibraryMaterialRequest) (LibraryMaterialListItem, error) {
+	return booklibrary.CreateLibraryMaterial(request)
+}
+
+// UpdateLibraryMaterial 更新书库自有素材或已迁移素材。
+func (a *App) UpdateLibraryMaterial(request UpdateLibraryMaterialRequest) (LibraryMaterialListItem, error) {
+	return booklibrary.UpdateLibraryMaterial(request)
+}
+
+// DeleteLibraryMaterial 删除书库自有素材，实时引用的本书素材不在这里删除。
+func (a *App) DeleteLibraryMaterial(request DeleteLibraryMaterialRequest) (LibraryMaterialCollection, error) {
+	return booklibrary.DeleteLibraryMaterial(request)
 }
 
 // OpenDeconstructionPlanWorkspace 读取当前书的当前拆解方案和模板列表。

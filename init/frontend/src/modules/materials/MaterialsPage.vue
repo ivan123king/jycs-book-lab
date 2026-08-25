@@ -448,10 +448,6 @@ defineExpose({
           <p>{{ explanationText(selectedMaterial) || '暂无拆解说明' }}</p>
         </section>
         <section class="material-field">
-          <strong>来源</strong>
-          <p>{{ firstSourceSummary(selectedMaterial) }}</p>
-        </section>
-        <section class="material-field">
           <strong>标签</strong>
           <n-space v-if="selectedMaterial.tagIds.length" size="small">
             <n-tag v-for="tag in selectedMaterial.tagIds" :key="tag" size="small">{{ tag }}</n-tag>

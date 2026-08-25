@@ -18,12 +18,20 @@ export function CreateDeconstructionCard(arg1) {
   return window['go']['main']['App']['CreateDeconstructionCard'](arg1);
 }
 
+export function CreateLibraryMaterial(arg1) {
+  return window['go']['main']['App']['CreateLibraryMaterial'](arg1);
+}
+
 export function CreateMaterialFromCard(arg1) {
   return window['go']['main']['App']['CreateMaterialFromCard'](arg1);
 }
 
 export function DeleteDeconstructionCard(arg1) {
   return window['go']['main']['App']['DeleteDeconstructionCard'](arg1);
+}
+
+export function DeleteLibraryMaterial(arg1) {
+  return window['go']['main']['App']['DeleteLibraryMaterial'](arg1);
 }
 
 export function DeleteMaterial(arg1) {
@@ -60,6 +68,10 @@ export function OpenDeconstructionTemplate(arg1, arg2) {
 
 export function OpenLastReadingSession() {
   return window['go']['main']['App']['OpenLastReadingSession']();
+}
+
+export function OpenLibraryMaterialPage(arg1) {
+  return window['go']['main']['App']['OpenLibraryMaterialPage'](arg1);
 }
 
 export function OpenMaterialWorkspace(arg1) {
@@ -116,6 +128,10 @@ export function SplitChapterFromStart(arg1) {
 
 export function UpdateDeconstructionCard(arg1) {
   return window['go']['main']['App']['UpdateDeconstructionCard'](arg1);
+}
+
+export function UpdateLibraryMaterial(arg1) {
+  return window['go']['main']['App']['UpdateLibraryMaterial'](arg1);
 }
 
 export function UpdateMaterial(arg1) {

@@ -558,6 +558,32 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class CreateLibraryMaterialRequest {
+	    libraryPath: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    materialType: string;
+	    planTypeName: string;
+	    dimensionName: string;
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateLibraryMaterialRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.libraryPath = source["libraryPath"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.materialType = source["materialType"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionName = source["dimensionName"];
+	        this.tagIds = source["tagIds"];
+	    }
+	}
 	export class CreateMaterialFromCardRequest {
 	    bookPath: string;
 	    cardId: string;
@@ -1065,6 +1091,20 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeleteLibraryMaterialRequest {
+	    libraryPath: string;
+	    libraryMaterialId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteLibraryMaterialRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.libraryPath = source["libraryPath"];
+	        this.libraryMaterialId = source["libraryMaterialId"];
+	    }
+	}
 	export class DeleteMaterialRequest {
 	    bookPath: string;
 	    materialId: string;
@@ -1183,6 +1223,246 @@ export namespace library {
 	}
 	
 	
+	export class LibraryMaterial {
+	    id: string;
+	    sourceMode: string;
+	    bookId: string;
+	    bookName: string;
+	    originalBookPath: string;
+	    bookMaterialId: string;
+	    materialType: string;
+	    planTypeName: string;
+	    dimensionName: string;
+	    title: string;
+	    summary: string;
+	    contentPath: string;
+	    tagIds: string[];
+	    sourceRefs: MaterialSourceRef[];
+	    createdAt: string;
+	    updatedAt: string;
+	    migratedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterial(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sourceMode = source["sourceMode"];
+	        this.bookId = source["bookId"];
+	        this.bookName = source["bookName"];
+	        this.originalBookPath = source["originalBookPath"];
+	        this.bookMaterialId = source["bookMaterialId"];
+	        this.materialType = source["materialType"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionName = source["dimensionName"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.contentPath = source["contentPath"];
+	        this.tagIds = source["tagIds"];
+	        this.sourceRefs = this.convertValues(source["sourceRefs"], MaterialSourceRef);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.migratedAt = source["migratedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LibraryMaterialBookOption {
+	    bookId: string;
+	    bookName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterialBookOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookId = source["bookId"];
+	        this.bookName = source["bookName"];
+	    }
+	}
+	export class LibraryMaterialCollection {
+	    version: number;
+	    items: LibraryMaterial[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterialCollection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.items = this.convertValues(source["items"], LibraryMaterial);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LibraryMaterialListItem {
+	    id: string;
+	    sourceMode: string;
+	    libraryMaterialId: string;
+	    bookId: string;
+	    bookName: string;
+	    bookPath: string;
+	    bookMaterialId: string;
+	    materialType: string;
+	    planTypeName: string;
+	    dimensionName: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    tagIds: string[];
+	    sourceRefs: MaterialSourceRef[];
+	    createdAt: string;
+	    updatedAt: string;
+	    sourceAvailable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterialListItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sourceMode = source["sourceMode"];
+	        this.libraryMaterialId = source["libraryMaterialId"];
+	        this.bookId = source["bookId"];
+	        this.bookName = source["bookName"];
+	        this.bookPath = source["bookPath"];
+	        this.bookMaterialId = source["bookMaterialId"];
+	        this.materialType = source["materialType"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionName = source["dimensionName"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.tagIds = source["tagIds"];
+	        this.sourceRefs = this.convertValues(source["sourceRefs"], MaterialSourceRef);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.sourceAvailable = source["sourceAvailable"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LibraryMaterialPage {
+	    libraryPath: string;
+	    items: LibraryMaterialListItem[];
+	    total: number;
+	    page: number;
+	    pageSize: number;
+	    books: LibraryMaterialBookOption[];
+	    types: string[];
+	    tags: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterialPage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.libraryPath = source["libraryPath"];
+	        this.items = this.convertValues(source["items"], LibraryMaterialListItem);
+	        this.total = source["total"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	        this.books = this.convertValues(source["books"], LibraryMaterialBookOption);
+	        this.types = source["types"];
+	        this.tags = source["tags"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class LibraryMaterialPageRequest {
+	    libraryPath: string;
+	    keyword: string;
+	    bookId: string;
+	    materialType: string;
+	    tagId: string;
+	    page: number;
+	    pageSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LibraryMaterialPageRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.libraryPath = source["libraryPath"];
+	        this.keyword = source["keyword"];
+	        this.bookId = source["bookId"];
+	        this.materialType = source["materialType"];
+	        this.tagId = source["tagId"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	    }
+	}
 	
 	
 	
@@ -1694,6 +1974,34 @@ export namespace library {
 		    }
 		    return a;
 		}
+	}
+	export class UpdateLibraryMaterialRequest {
+	    libraryPath: string;
+	    libraryMaterialId: string;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    materialType: string;
+	    planTypeName: string;
+	    dimensionName: string;
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateLibraryMaterialRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.libraryPath = source["libraryPath"];
+	        this.libraryMaterialId = source["libraryMaterialId"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.materialType = source["materialType"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensionName = source["dimensionName"];
+	        this.tagIds = source["tagIds"];
+	    }
 	}
 	export class UpdateMaterialRequest {
 	    bookPath: string;

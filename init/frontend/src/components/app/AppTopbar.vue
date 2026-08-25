@@ -6,6 +6,7 @@ import { NLayoutHeader } from 'naive-ui'
 defineProps<{
   title: string
   currentBook: CurrentBookSummary
+  showBookContext?: boolean
 }>()
 </script>
 
@@ -13,7 +14,7 @@ defineProps<{
   <n-layout-header bordered class="topbar">
     <div>
       <div class="page-title">{{ title }}</div>
-      <div class="page-context">
+      <div v-if="showBookContext !== false" class="page-context">
         当前书：{{ currentBook.title }} · {{ currentBook.readingPosition }}
       </div>
     </div>

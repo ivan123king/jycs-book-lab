@@ -6,6 +6,7 @@
  */
 export type ViewKey =
   | 'library'
+  | 'libraryMaterials'
   | 'reading'
   | 'deconstructions'
   | 'materials'

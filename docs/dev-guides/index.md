@@ -16,7 +16,7 @@
    - 写作手法拆解、选文拆解弹框、写作手法卡片、沉淀素材入口：`docs/dev-guides/writing-technique-deconstruction/implementation.md`
    - 剧情拆解、非连续章节范围、剧情简介、剧情维度输入、剧情草稿：`docs/dev-guides/story-plot-deconstruction/implementation.md`
    - 小说内素材、拆解沉淀素材、单本小说素材正式数据：`docs/dev-guides/book-material-library/implementation.md`
-   - 全局素材库、跨书素材引用索引、来源项目状态：`docs/dev-guides/global-material-library.md`
+   - 书库素材库、单书素材引用、书库自有素材、移除书籍前素材迁移：`docs/dev-guides/global-material-library.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
    - 注释、文件组织、协作规则：`docs/dev-guides/coding-rules.md`
@@ -52,8 +52,8 @@
 | `docs/dev-guides/deconstruction-plan.md` | 拆解方案与模板指南，说明当前方案引用、模板目录、`analysisKind`、类型、维度、模板切换和卡片快照保存规则。 | 拆解方案页、拆解模板、阅读拆解表单、拆解卡片保存结构相关任务。 |
 | `docs/dev-guides/writing-technique-deconstruction/implementation.md` | 写作手法拆解模块实现指南，说明选文创建、来源追溯、卡片页、数据结构和沉淀素材入口。 | 写作手法拆解弹框、写作手法拆解卡片页、选文来源追溯和素材沉淀入口相关任务。 |
 | `docs/dev-guides/story-plot-deconstruction/implementation.md` | 剧情拆解模块实现指南，说明剧情拆解与写作手法拆解的区别、非连续章节范围、剧情简介、维度折叠、章节内容查看和草稿保存。 | 剧情拆解页、新建剧情拆解弹框、剧情卡片详情、剧情素材沉淀相关任务。 |
-| `docs/dev-guides/book-material-library/implementation.md` | 小说内素材模块实现指南，说明单本小说素材正式数据、来源追溯、拆解沉淀素材和与全局索引的同步关系。 | 小说内素材页、素材数据结构、素材来源追溯、从拆解沉淀素材相关任务。 |
-| `docs/dev-guides/global-material-library.md` | 全局素材库指南，说明跨书素材引用索引、来源项目状态和索引重建规则。 | 全局素材库页、跨书素材检索、素材索引刷新和来源项目丢失处理任务。 |
+| `docs/dev-guides/book-material-library/implementation.md` | 小说内素材模块实现指南，说明单本小说素材正式数据、来源追溯、拆解沉淀素材和书库素材刷新关系。 | 小说内素材页、素材数据结构、素材来源追溯、从拆解沉淀素材相关任务。 |
+| `docs/dev-guides/global-material-library.md` | 书库素材库指南，说明单书素材引用、书库自有素材、分页检索和移除书籍前素材迁移规则。 | 书库素材库页、跨书素材检索、书库自建素材、素材迁移和来源项目移除处理任务。 |
 | `docs/dev-guides/backend-local-data.md` | 本地后端、数据模型、存储和业务服务指南。 | 文件导入、章节识别、数据库、搜索、标签、素材、来源追溯相关任务。 |
 | `docs/dev-guides/coding-rules.md` | 编码、注释、命名和协作规则。 | 新增文件、模块、函数、复杂业务逻辑、数据结构变更任务。 |
 
@@ -77,7 +77,7 @@ P0 只围绕完整闭环开发：
 5. 剧情拆解模块
 6. 拆解方案配置模块
 7. 小说内素材库模块
-8. 全局素材库模块
+8. 书库素材库模块
 9. 分类与标签模块
 10. 来源追溯模块
 

@@ -130,6 +130,111 @@ func TestRemoveBookFromLibraryRejectsPathOutsideBooks(t *testing.T) {
 	}
 }
 
+// TestLibraryMaterialPageKeepsMaterialsAfterBookRemoval 覆盖书库素材聚合、自建素材和移除书籍前的素材迁移。
+func TestLibraryMaterialPageKeepsMaterialsAfterBookRemoval(t *testing.T) {
+	t.Setenv("AppData", t.TempDir())
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "素材迁移小说.txt")
+	sourceText := "第一章 雨夜\n她把信收进外套，又看了一眼窗外。\n"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-material-migrate-001",
+		SourcePath: sourcePath,
+		BookName:   "素材迁移小说",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+	bookPath := result.Project.Book.BookPath
+
+	if _, err := OpenReadingSession(bookPath); err != nil {
+		t.Fatalf("打开阅读会话失败: %v", err)
+	}
+	createdCard, err := CreateDeconstructionCard(CreateDeconstructionRequest{
+		BookPath: bookPath,
+		Selection: SourceSelection{
+			ChapterID:    "chapter-000001",
+			ChapterOrder: 1,
+			StartOffset:  0,
+			EndOffset:    len("她把信收进外套"),
+			SelectedText: "她把信收进外套",
+		},
+		PlanTypeID:  "technique",
+		DimensionID: "environment",
+		Content:     "动作先于情绪说明，可以压住人物表达。",
+		TagIDs:      []string{"动作"},
+	})
+	if err != nil {
+		t.Fatalf("创建拆解失败: %v", err)
+	}
+	bookMaterial, err := CreateMaterialFromCard(CreateMaterialFromCardRequest{
+		BookPath: bookPath,
+		CardID:   createdCard.Card.ID,
+		Title:    "动作压住情绪",
+		Summary:  "她把信收进外套",
+		Content:  "动作先于情绪说明，可以压住人物表达。",
+		TagIDs:   []string{"动作", "克制"},
+	})
+	if err != nil {
+		t.Fatalf("创建本书素材失败: %v", err)
+	}
+	if _, err := CreateLibraryMaterial(CreateLibraryMaterialRequest{
+		LibraryPath:   libraryPath,
+		Title:         "书库自建素材",
+		Summary:       "不依赖任何单本小说的原文摘录",
+		Content:       "这是书库直接沉淀的写作经验。",
+		MaterialType:  analysisKindWritingTechnique,
+		PlanTypeName:  "手动整理",
+		DimensionName: "经验",
+		TagIDs:        []string{"自建"},
+	}); err != nil {
+		t.Fatalf("创建书库自建素材失败: %v", err)
+	}
+
+	page, err := OpenLibraryMaterialPage(LibraryMaterialPageRequest{LibraryPath: libraryPath, Page: 1, PageSize: 50})
+	if err != nil {
+		t.Fatalf("打开书库素材页失败: %v", err)
+	}
+	if page.Total != 2 {
+		t.Fatalf("书库素材总数 = %d, want 2: %+v", page.Total, page.Items)
+	}
+	foundReference := false
+	for _, item := range page.Items {
+		if item.SourceMode == libraryMaterialSourceReference && item.BookMaterialID == bookMaterial.Material.ID {
+			foundReference = true
+		}
+	}
+	if !foundReference {
+		t.Fatalf("书库素材页未展示本书素材引用: %+v", page.Items)
+	}
+
+	if _, err := RemoveBookFromLibrary(libraryPath, bookPath); err != nil {
+		t.Fatalf("移除书籍失败: %v", err)
+	}
+	page, err = OpenLibraryMaterialPage(LibraryMaterialPageRequest{LibraryPath: libraryPath, Page: 1, PageSize: 50})
+	if err != nil {
+		t.Fatalf("移除后打开书库素材页失败: %v", err)
+	}
+	if page.Total != 2 {
+		t.Fatalf("移除后书库素材总数 = %d, want 2: %+v", page.Total, page.Items)
+	}
+	foundMigrated := false
+	for _, item := range page.Items {
+		if item.SourceMode == libraryMaterialSourceMigrated && item.BookMaterialID == bookMaterial.Material.ID &&
+			item.Content == "动作先于情绪说明，可以压住人物表达。" {
+			foundMigrated = true
+		}
+		if item.SourceMode == libraryMaterialSourceReference {
+			t.Fatalf("移除后不应再保留实时本书引用: %+v", item)
+		}
+	}
+	if !foundMigrated {
+		t.Fatalf("移除后未找到迁移素材: %+v", page.Items)
+	}
+}
+
 // TestDetectChaptersFallsBackToSingleChapter 确保无章节标题的 TXT 也能形成可打开项目。
 func TestDetectChaptersFallsBackToSingleChapter(t *testing.T) {
 	chapters := DetectChapters("没有章节标题的正文")

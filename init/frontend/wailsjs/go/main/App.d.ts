@@ -10,9 +10,13 @@ export function ConfirmNovelImport(arg1:library.ConfirmImportRequest):Promise<li
 
 export function CreateDeconstructionCard(arg1:library.CreateDeconstructionRequest):Promise<library.CreateDeconstructionResult>;
 
+export function CreateLibraryMaterial(arg1:library.CreateLibraryMaterialRequest):Promise<library.LibraryMaterialListItem>;
+
 export function CreateMaterialFromCard(arg1:library.CreateMaterialFromCardRequest):Promise<library.CreateMaterialResult>;
 
 export function DeleteDeconstructionCard(arg1:library.DeleteDeconstructionCardRequest):Promise<library.DeleteDeconstructionCardResult>;
+
+export function DeleteLibraryMaterial(arg1:library.DeleteLibraryMaterialRequest):Promise<library.LibraryMaterialCollection>;
 
 export function DeleteMaterial(arg1:library.DeleteMaterialRequest):Promise<library.DeleteMaterialResult>;
 
@@ -31,6 +35,8 @@ export function OpenDeconstructionPlanWorkspace(arg1:string):Promise<library.Dec
 export function OpenDeconstructionTemplate(arg1:string,arg2:string):Promise<library.DeconstructionPlan>;
 
 export function OpenLastReadingSession():Promise<library.ReadingSession>;
+
+export function OpenLibraryMaterialPage(arg1:library.LibraryMaterialPageRequest):Promise<library.LibraryMaterialPage>;
 
 export function OpenMaterialWorkspace(arg1:string):Promise<library.MaterialWorkspace>;
 
@@ -59,5 +65,7 @@ export function SetCurrentDeconstructionTemplate(arg1:library.SetCurrentDeconstr
 export function SplitChapterFromStart(arg1:library.SplitChapterRequest):Promise<library.SplitChapterResult>;
 
 export function UpdateDeconstructionCard(arg1:library.UpdateDeconstructionCardRequest):Promise<library.UpdateDeconstructionCardResult>;
+
+export function UpdateLibraryMaterial(arg1:library.UpdateLibraryMaterialRequest):Promise<library.LibraryMaterialListItem>;
 
 export function UpdateMaterial(arg1:library.UpdateMaterialRequest):Promise<library.UpdateMaterialResult>;

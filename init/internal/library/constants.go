@@ -15,6 +15,8 @@ const (
 	legacyDeconstructionCardsPath   = "deconstructions/deconstruction-cards.json"
 	materialsRelativePath           = "materials/materials.json"
 	materialTextsDir                = "materials/texts"
+	libraryMaterialsRelativePath    = "materials/library-materials.json"
+	libraryMaterialTextsDir         = "materials/texts"
 	globalMaterialIndexFileName     = "global-material-index.json"
 	deconstructionPlanRelativePath  = "deconstruction-plan.json"
 	deconstructionTemplatesDir      = "deconstruction-templates"
@@ -27,4 +29,7 @@ const (
 	defaultReaderFontSize           = 18
 	minReaderFontSize               = 14
 	maxReaderFontSize               = 28
+	libraryMaterialSourceReference  = "bookReference"
+	libraryMaterialSourceOwned      = "libraryOwned"
+	libraryMaterialSourceMigrated   = "migratedBookCopy"
 )

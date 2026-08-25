@@ -181,6 +181,10 @@ func RemoveBookFromLibrary(libraryPath string, bookPath string) (LibraryState, e
 	if !isPathInside(booksRoot, removedEntry.BookPath) {
 		return LibraryState{}, errors.New("小说目录不在当前书库 books 目录下，已拒绝移除")
 	}
+	// 移除书籍前先把该书已有素材复制到书库素材正式数据，避免书库素材引用随单书目录删除而失效。
+	if _, err := MigrateBookMaterialsToLibrary(libraryPath, removedEntry.BookPath); err != nil {
+		return LibraryState{}, fmt.Errorf("迁移小说素材到书库素材失败: %w", err)
+	}
 	if err := os.RemoveAll(removedEntry.BookPath); err != nil {
 		return LibraryState{}, fmt.Errorf("删除小说项目目录失败: %w", err)
 	}

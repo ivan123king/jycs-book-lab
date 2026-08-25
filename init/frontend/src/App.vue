@@ -2,7 +2,7 @@
 // App.vue 负责第一阶段应用壳层路由和当前书摘要，不承载具体页面业务实现。
 import { computed, onMounted, ref } from 'vue'
 import { NButton, NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NScrollbar } from 'naive-ui'
-import { RefreshCw } from 'lucide-vue-next'
+import { Plus, RefreshCw } from 'lucide-vue-next'
 import { OpenLastReadingSession } from '@wails/go/main/App'
 import AppSidebar from '@/components/app/AppSidebar.vue'
 import AppTopbar from '@/components/app/AppTopbar.vue'
@@ -14,6 +14,7 @@ import {
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import DeconstructionCardsPage from '@/modules/deconstructions/DeconstructionCardsPage.vue'
 import LibraryPage from '@/modules/library/LibraryPage.vue'
+import LibraryMaterialsPage from '@/modules/materials/LibraryMaterialsPage.vue'
 import MaterialsPage from '@/modules/materials/MaterialsPage.vue'
 import DeconstructionPlanPage from '@/modules/plan/DeconstructionPlanPage.vue'
 import ReadingWorkbenchPage from '@/modules/reading/ReadingWorkbenchPage.vue'
@@ -29,6 +30,7 @@ const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
 const currentProject = ref<BookProject | null>(null)
 const readingSourceFocus = ref<ReadingSourceFocus | null>(null)
 const materialsPageRef = ref<InstanceType<typeof MaterialsPage> | null>(null)
+const libraryMaterialsPageRef = ref<InstanceType<typeof LibraryMaterialsPage> | null>(null)
 
 type ApplyCurrentBookOptions = {
   navigateToReading?: boolean
@@ -45,6 +47,7 @@ type ReadingSourceFocus = {
 const activeTitle = computed(() => {
   const titles: Record<ViewKey, string> = {
     library: '书库',
+    libraryMaterials: '书库素材',
     reading: '阅读与拆解',
     deconstructions: '写作手法拆解',
     materials: '素材库',
@@ -143,6 +146,14 @@ function refreshMaterialsPage() {
   materialsPageRef.value?.refresh()
 }
 
+function refreshLibraryMaterialsPage() {
+  libraryMaterialsPageRef.value?.refresh()
+}
+
+function openLibraryMaterialCreate() {
+  libraryMaterialsPageRef.value?.openCreate()
+}
+
 onMounted(restoreLastOpenedBook)
 </script>
 
@@ -157,8 +168,23 @@ onMounted(restoreLastOpenedBook)
             v-if="activeView !== 'library'"
             :title="activeTitle"
             :current-book="currentBook"
+            :show-book-context="activeView !== 'libraryMaterials'"
           >
-            <template v-if="activeView === 'materials'" #actions>
+            <template v-if="activeView === 'libraryMaterials'" #actions>
+              <n-button type="primary" secondary @click="openLibraryMaterialCreate">
+                <template #icon>
+                  <Plus :size="16" />
+                </template>
+                新增素材
+              </n-button>
+              <n-button secondary @click="refreshLibraryMaterialsPage">
+                <template #icon>
+                  <RefreshCw :size="16" />
+                </template>
+                刷新
+              </n-button>
+            </template>
+            <template v-else-if="activeView === 'materials'" #actions>
               <n-button secondary @click="refreshMaterialsPage">
                 <template #icon>
                   <RefreshCw :size="16" />
@@ -175,6 +201,11 @@ onMounted(restoreLastOpenedBook)
                 v-model:mode="libraryMode"
                 @open-book="applyCurrentBook"
                 @book-removed="clearCurrentBookIfRemoved"
+              />
+              <LibraryMaterialsPage
+                v-else-if="activeView === 'libraryMaterials'"
+                ref="libraryMaterialsPageRef"
+                @open-book-source="applyCurrentBook"
               />
               <ReadingWorkbenchPage
                 v-else-if="activeView === 'reading'"

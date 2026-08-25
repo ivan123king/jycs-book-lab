@@ -383,6 +383,115 @@ type DeleteMaterialResult struct {
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
 }
 
+// LibraryMaterial 是书库目录自己的正式素材元数据，正文保存在书库 materials/texts 下。
+type LibraryMaterial struct {
+	ID               string              `json:"id"`
+	SourceMode       string              `json:"sourceMode"`
+	BookID           string              `json:"bookId"`
+	BookName         string              `json:"bookName"`
+	OriginalBookPath string              `json:"originalBookPath"`
+	BookMaterialID   string              `json:"bookMaterialId"`
+	MaterialType     string              `json:"materialType"`
+	PlanTypeName     string              `json:"planTypeName"`
+	DimensionName    string              `json:"dimensionName"`
+	Title            string              `json:"title"`
+	Summary          string              `json:"summary"`
+	ContentPath      string              `json:"contentPath"`
+	TagIDs           []string            `json:"tagIds"`
+	SourceRefs       []MaterialSourceRef `json:"sourceRefs"`
+	CreatedAt        string              `json:"createdAt"`
+	UpdatedAt        string              `json:"updatedAt"`
+	MigratedAt       string              `json:"migratedAt"`
+}
+
+// LibraryMaterialCollection 对应书库根目录中的 materials/library-materials.json。
+type LibraryMaterialCollection struct {
+	Version int               `json:"version"`
+	Items   []LibraryMaterial `json:"items"`
+}
+
+// LibraryMaterialListItem 是书库素材页的分页展示条目，合并书库自有素材和本书素材引用。
+type LibraryMaterialListItem struct {
+	ID                string              `json:"id"`
+	SourceMode        string              `json:"sourceMode"`
+	LibraryMaterialID string              `json:"libraryMaterialId"`
+	BookID            string              `json:"bookId"`
+	BookName          string              `json:"bookName"`
+	BookPath          string              `json:"bookPath"`
+	BookMaterialID    string              `json:"bookMaterialId"`
+	MaterialType      string              `json:"materialType"`
+	PlanTypeName      string              `json:"planTypeName"`
+	DimensionName     string              `json:"dimensionName"`
+	Title             string              `json:"title"`
+	Summary           string              `json:"summary"`
+	Content           string              `json:"content"`
+	TagIDs            []string            `json:"tagIds"`
+	SourceRefs        []MaterialSourceRef `json:"sourceRefs"`
+	CreatedAt         string              `json:"createdAt"`
+	UpdatedAt         string              `json:"updatedAt"`
+	SourceAvailable   bool                `json:"sourceAvailable"`
+}
+
+// LibraryMaterialPageRequest 承载书库素材页的筛选和分页参数。
+type LibraryMaterialPageRequest struct {
+	LibraryPath  string `json:"libraryPath"`
+	Keyword      string `json:"keyword"`
+	BookID       string `json:"bookId"`
+	MaterialType string `json:"materialType"`
+	TagID        string `json:"tagId"`
+	Page         int    `json:"page"`
+	PageSize     int    `json:"pageSize"`
+}
+
+// LibraryMaterialPage 返回书库素材页当前页数据和筛选选项。
+type LibraryMaterialPage struct {
+	LibraryPath string                      `json:"libraryPath"`
+	Items       []LibraryMaterialListItem   `json:"items"`
+	Total       int                         `json:"total"`
+	Page        int                         `json:"page"`
+	PageSize    int                         `json:"pageSize"`
+	Books       []LibraryMaterialBookOption `json:"books"`
+	Types       []string                    `json:"types"`
+	Tags        []string                    `json:"tags"`
+}
+
+// LibraryMaterialBookOption 是书库素材页按书筛选的轻量选项。
+type LibraryMaterialBookOption struct {
+	BookID   string `json:"bookId"`
+	BookName string `json:"bookName"`
+}
+
+// CreateLibraryMaterialRequest 保存用户直接在书库素材页新建的素材。
+type CreateLibraryMaterialRequest struct {
+	LibraryPath   string   `json:"libraryPath"`
+	Title         string   `json:"title"`
+	Summary       string   `json:"summary"`
+	Content       string   `json:"content"`
+	MaterialType  string   `json:"materialType"`
+	PlanTypeName  string   `json:"planTypeName"`
+	DimensionName string   `json:"dimensionName"`
+	TagIDs        []string `json:"tagIds"`
+}
+
+// UpdateLibraryMaterialRequest 更新书库自有素材，不能用于实时引用的本书素材。
+type UpdateLibraryMaterialRequest struct {
+	LibraryPath       string   `json:"libraryPath"`
+	LibraryMaterialID string   `json:"libraryMaterialId"`
+	Title             string   `json:"title"`
+	Summary           string   `json:"summary"`
+	Content           string   `json:"content"`
+	MaterialType      string   `json:"materialType"`
+	PlanTypeName      string   `json:"planTypeName"`
+	DimensionName     string   `json:"dimensionName"`
+	TagIDs            []string `json:"tagIds"`
+}
+
+// DeleteLibraryMaterialRequest 删除书库自有素材；本书素材引用必须回到单书素材页处理。
+type DeleteLibraryMaterialRequest struct {
+	LibraryPath       string `json:"libraryPath"`
+	LibraryMaterialID string `json:"libraryMaterialId"`
+}
+
 // GlobalMaterialIndex 是应用系统数据目录中的跨书素材引用索引，不是素材正式数据源。
 type GlobalMaterialIndex struct {
 	Version int                       `json:"version"`
