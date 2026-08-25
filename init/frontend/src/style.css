@@ -913,6 +913,14 @@ p {
     margin-bottom: 6px;
 }
 
+.story-material-source-grid {
+    margin-bottom: 16px;
+}
+
+.detail_label{
+    margin-right: 10px;
+}
+
 .chapter-content-layout {
     display: grid;
     grid-template-columns: 230px minmax(0, 1fr);

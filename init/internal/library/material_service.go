@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var errMaterialSourceCardNotFound = errors.New("素材来源拆解卡片不存在")
+
 // OpenMaterialWorkspace 读取当前书素材、素材正文和来源上下文，所有正式数据都来自小说项目目录。
 func OpenMaterialWorkspace(bookPath string) (MaterialWorkspace, error) {
 	project, err := OpenBookProject(bookPath)
@@ -45,7 +47,7 @@ func OpenMaterialWorkspace(bookPath string) (MaterialWorkspace, error) {
 	}, nil
 }
 
-// BuildMaterialDraftFromCard 根据写作手法拆解卡片生成可编辑素材草稿，不直接保存为素材。
+// BuildMaterialDraftFromCard 根据写作手法或剧情拆解卡片生成可编辑素材草稿，不直接保存为素材。
 func BuildMaterialDraftFromCard(request BuildMaterialDraftFromCardRequest) (MaterialDraft, error) {
 	project, err := OpenBookProject(request.BookPath)
 	if err != nil {
@@ -56,25 +58,47 @@ func BuildMaterialDraftFromCard(request BuildMaterialDraftFromCardRequest) (Mate
 		return MaterialDraft{}, err
 	}
 	card, sourceText, chapter, err := loadWritingTechniqueSourceContext(bookPath, project, request.CardID)
+	if err == nil {
+		sourceRef := buildWritingTechniqueMaterialSourceRef(project, card, sourceText, chapter)
+		title := strings.TrimSpace(card.DimensionName)
+		if title == "" {
+			title = strings.TrimSpace(card.PlanTypeName)
+		}
+		if title == "" {
+			title = "写作手法素材"
+		}
+		return MaterialDraft{
+			MaterialType: analysisKindWritingTechnique,
+			Title:        title,
+			Summary:      sourceText.SelectedText,
+			Content:      card.Content,
+			CategoryIDs:  []string{},
+			TagIDs:       append([]string{}, card.TagIDs...),
+			SourceRefs:   []MaterialSourceRef{sourceRef},
+		}, nil
+	}
+	if !errors.Is(err, errMaterialSourceCardNotFound) {
+		return MaterialDraft{}, err
+	}
+	storyCard, err := loadStoryPlotSourceContext(bookPath, request.CardID)
 	if err != nil {
 		return MaterialDraft{}, err
 	}
-	sourceRef := buildWritingTechniqueMaterialSourceRef(project, card, sourceText, chapter)
-	title := strings.TrimSpace(card.DimensionName)
+	title := strings.TrimSpace(storyCard.Title)
 	if title == "" {
-		title = strings.TrimSpace(card.PlanTypeName)
+		title = strings.TrimSpace(storyCard.PlanTypeName)
 	}
 	if title == "" {
-		title = "写作手法素材"
+		title = "剧情结构素材"
 	}
 	return MaterialDraft{
-		MaterialType: analysisKindWritingTechnique,
+		MaterialType: analysisKindStoryPlot,
 		Title:        title,
-		Summary:      sourceText.SelectedText,
-		Content:      card.Content,
+		Summary:      storyCard.Summary,
+		Content:      buildStoryPlotMaterialContent(storyCard),
 		CategoryIDs:  []string{},
-		TagIDs:       append([]string{}, card.TagIDs...),
-		SourceRefs:   []MaterialSourceRef{sourceRef},
+		TagIDs:       append([]string{}, storyCard.TagIDs...),
+		SourceRefs:   []MaterialSourceRef{buildStoryPlotMaterialSourceRef(project, storyCard)},
 	}, nil
 }
 
@@ -93,8 +117,16 @@ func CreateMaterialFromCard(request CreateMaterialFromCardRequest) (CreateMateri
 		return CreateMaterialResult{}, err
 	}
 	card, sourceText, chapter, err := loadWritingTechniqueSourceContext(bookPath, project, request.CardID)
+	isWritingTechnique := err == nil
+	storyCard := StoryPlotCard{}
 	if err != nil {
-		return CreateMaterialResult{}, err
+		if !errors.Is(err, errMaterialSourceCardNotFound) {
+			return CreateMaterialResult{}, err
+		}
+		storyCard, err = loadStoryPlotSourceContext(bookPath, request.CardID)
+		if err != nil {
+			return CreateMaterialResult{}, err
+		}
 	}
 	materials, err := loadMaterials(bookPath)
 	if err != nil {
@@ -107,16 +139,24 @@ func CreateMaterialFromCard(request CreateMaterialFromCardRequest) (CreateMateri
 
 	now := time.Now().Format(time.RFC3339)
 	materialID := nextMaterialID(materials)
+	materialType := analysisKindWritingTechnique
+	sourceRefs := []MaterialSourceRef{}
+	if !isWritingTechnique {
+		materialType = analysisKindStoryPlot
+		sourceRefs = []MaterialSourceRef{buildStoryPlotMaterialSourceRef(project, storyCard)}
+	} else {
+		sourceRefs = []MaterialSourceRef{buildWritingTechniqueMaterialSourceRef(project, card, sourceText, chapter)}
+	}
 	material := Material{
 		ID:           materialID,
 		BookID:       project.Book.ID,
-		MaterialType: analysisKindWritingTechnique,
+		MaterialType: materialType,
 		Title:        title,
 		Summary:      summary,
 		ContentPath:  filepath.ToSlash(filepath.Join(materialTextsDir, materialID+".txt")),
 		CategoryIDs:  normalizeTags(request.CategoryIDs),
 		TagIDs:       normalizeTags(request.TagIDs),
-		SourceRefs:   []MaterialSourceRef{buildWritingTechniqueMaterialSourceRef(project, card, sourceText, chapter)},
+		SourceRefs:   sourceRefs,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -127,9 +167,20 @@ func CreateMaterialFromCard(request CreateMaterialFromCardRequest) (CreateMateri
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(materialsRelativePath)), materials); err != nil {
 		return CreateMaterialResult{}, fmt.Errorf("保存素材索引失败: %w", err)
 	}
-	cards = addMaterialIDToCard(cards, card.ID, material.ID)
-	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
-		return CreateMaterialResult{}, fmt.Errorf("同步拆解卡片素材引用失败: %w", err)
+	if isWritingTechnique {
+		cards = addMaterialIDToCard(cards, card.ID, material.ID)
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
+			return CreateMaterialResult{}, fmt.Errorf("同步写作手法拆解卡片素材引用失败: %w", err)
+		}
+	} else {
+		storyCards, err := loadStoryPlotCards(bookPath)
+		if err != nil {
+			return CreateMaterialResult{}, err
+		}
+		storyCards = addMaterialIDToStoryPlotCard(storyCards, storyCard.ID, material.ID)
+		if err := writeStoryPlotCards(bookPath, storyCards); err != nil {
+			return CreateMaterialResult{}, fmt.Errorf("同步剧情拆解卡片素材引用失败: %w", err)
+		}
 	}
 	contents, err := loadMaterialContents(bookPath, materials)
 	if err != nil {
@@ -188,7 +239,7 @@ func UpdateMaterial(request UpdateMaterialRequest) (UpdateMaterialResult, error)
 	return UpdateMaterialResult{}, fmt.Errorf("素材不存在: %s", request.MaterialID)
 }
 
-// DeleteMaterial 删除单本书素材和对应 TXT，并从写作手法拆解卡片中移除反向引用。
+// DeleteMaterial 删除单本书素材和对应 TXT，并从写作手法和剧情拆解卡片中移除反向引用。
 func DeleteMaterial(request DeleteMaterialRequest) (DeleteMaterialResult, error) {
 	project, err := OpenBookProject(request.BookPath)
 	if err != nil {
@@ -231,7 +282,15 @@ func DeleteMaterial(request DeleteMaterialRequest) (DeleteMaterialResult, error)
 	}
 	cards = removeMaterialIDFromCards(cards, removed.ID)
 	if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(deconstructionCardsRelativePath)), cards); err != nil {
-		return DeleteMaterialResult{}, fmt.Errorf("同步拆解卡片素材引用失败: %w", err)
+		return DeleteMaterialResult{}, fmt.Errorf("同步写作手法拆解卡片素材引用失败: %w", err)
+	}
+	storyCards, err := loadStoryPlotCards(bookPath)
+	if err != nil {
+		return DeleteMaterialResult{}, err
+	}
+	storyCards = removeMaterialIDFromStoryPlotCards(storyCards, removed.ID)
+	if err := writeStoryPlotCards(bookPath, storyCards); err != nil {
+		return DeleteMaterialResult{}, fmt.Errorf("同步剧情拆解卡片素材引用失败: %w", err)
 	}
 	contents, err := loadMaterialContents(bookPath, materials)
 	if err != nil {
@@ -333,7 +392,7 @@ func loadWritingTechniqueSourceContext(bookPath string, project BookProject, car
 		}
 		return card, sourceText, chapter, nil
 	}
-	return DeconstructionCard{}, SourceText{}, BookChapter{}, fmt.Errorf("拆解卡片不存在: %s", cardID)
+	return DeconstructionCard{}, SourceText{}, BookChapter{}, fmt.Errorf("%w: %s", errMaterialSourceCardNotFound, cardID)
 }
 
 func buildWritingTechniqueMaterialSourceRef(project BookProject, card DeconstructionCard, sourceText SourceText, chapter BookChapter) MaterialSourceRef {
@@ -359,6 +418,84 @@ func buildWritingTechniqueMaterialSourceRef(project BookProject, card Deconstruc
 			CreatedAt:           card.CreatedAt,
 		},
 	}
+}
+
+// loadStoryPlotSourceContext 读取剧情拆解卡片来源，供素材沉淀时保留剧情章节范围追溯。
+func loadStoryPlotSourceContext(bookPath string, cardID string) (StoryPlotCard, error) {
+	cards, err := loadStoryPlotCards(bookPath)
+	if err != nil {
+		return StoryPlotCard{}, err
+	}
+	for _, card := range cards.Items {
+		if card.ID == cardID {
+			return card, nil
+		}
+	}
+	return StoryPlotCard{}, fmt.Errorf("%w: %s", errMaterialSourceCardNotFound, cardID)
+}
+
+// buildStoryPlotMaterialSourceRef 把剧情卡片的章节范围和分析快照转换为素材来源引用。
+func buildStoryPlotMaterialSourceRef(project BookProject, card StoryPlotCard) MaterialSourceRef {
+	chapterRefs := make([]MaterialChapterRef, 0, len(card.ChapterRefs))
+	chapterTitles := make([]string, 0, len(card.ChapterRefs))
+	for _, chapter := range card.ChapterRefs {
+		chapterRefs = append(chapterRefs, MaterialChapterRef{
+			ChapterID:            chapter.ChapterID,
+			ChapterOrder:         chapter.ChapterOrder,
+			ChapterTitleSnapshot: chapter.ChapterTitleSnapshot,
+		})
+		chapterTitles = append(chapterTitles, chapter.ChapterTitleSnapshot)
+	}
+	return MaterialSourceRef{
+		SourceKind:       analysisKindStoryPlot,
+		DeconstructionID: card.ID,
+		SourceTextID:     "",
+		ChapterRefs:      chapterRefs,
+		Snapshot: MaterialSourceSnapshot{
+			BookName:            project.Book.Name,
+			ChapterTitle:        strings.Join(chapterTitles, " / "),
+			DeconstructionTitle: firstNonEmpty(card.Title, "未命名剧情拆解"),
+			PlanTypeName:        card.PlanTypeName,
+			DimensionName:       primaryStoryPlotDimensionName(card),
+			SourceSummary:       excerptText(firstNonEmpty(card.Summary, buildStoryPlotMaterialContent(card)), 120),
+			SelectedText:        card.Summary,
+			CreatedAt:           card.CreatedAt,
+		},
+	}
+}
+
+// buildStoryPlotMaterialContent 生成剧情素材草稿正文，用户保存前仍可二次整理为可复用方法。
+func buildStoryPlotMaterialContent(card StoryPlotCard) string {
+	dimensionLines := []string{}
+	for _, dimension := range card.Dimensions {
+		name := strings.TrimSpace(dimension.Name)
+		content := strings.TrimSpace(dimension.Content)
+		// 剧情素材的可复用方法只沉淀用户真正填写过的维度，章节和简介留在来源信息里展示。
+		if content == "" {
+			continue
+		}
+		if name == "" {
+			name = "剧情维度"
+		}
+		dimensionLines = append(dimensionLines, name+"：\n"+content)
+	}
+	if len(dimensionLines) > 0 {
+		return strings.Join(dimensionLines, "\n\n")
+	}
+	return firstNonEmpty(card.Summary, card.Title, card.PlanTypeName, "剧情结构素材")
+}
+
+// primaryStoryPlotDimensionName 选择最能代表剧情素材的维度名称，用于素材列表展示和筛选。
+func primaryStoryPlotDimensionName(card StoryPlotCard) string {
+	for _, dimension := range card.Dimensions {
+		if strings.TrimSpace(dimension.Content) != "" {
+			return dimension.Name
+		}
+	}
+	if len(card.Dimensions) > 0 {
+		return card.Dimensions[0].Name
+	}
+	return "剧情结构"
 }
 
 func normalizeMaterialText(title string, summary string, content string) (string, string, string, error) {
@@ -417,6 +554,38 @@ func addMaterialIDToCard(cards DeconstructionCardCollection, cardID string, mate
 }
 
 func removeMaterialIDFromCards(cards DeconstructionCardCollection, materialID string) DeconstructionCardCollection {
+	for index := range cards.Items {
+		kept := make([]string, 0, len(cards.Items[index].MaterialIDs))
+		for _, existing := range cards.Items[index].MaterialIDs {
+			if existing != materialID {
+				kept = append(kept, existing)
+			}
+		}
+		cards.Items[index].MaterialIDs = kept
+	}
+	return cards
+}
+
+// addMaterialIDToStoryPlotCard 在剧情卡片中记录已沉淀素材，避免素材和来源卡片关系丢失。
+func addMaterialIDToStoryPlotCard(cards StoryPlotCardCollection, cardID string, materialID string) StoryPlotCardCollection {
+	for index := range cards.Items {
+		if cards.Items[index].ID != cardID {
+			continue
+		}
+		for _, existing := range cards.Items[index].MaterialIDs {
+			if existing == materialID {
+				return cards
+			}
+		}
+		cards.Items[index].MaterialIDs = append(cards.Items[index].MaterialIDs, materialID)
+		cards.Items[index].UpdatedAt = time.Now().Format(time.RFC3339)
+		return cards
+	}
+	return cards
+}
+
+// removeMaterialIDFromStoryPlotCards 删除素材时清理剧情卡片里的反向引用，素材来源快照仍保存在素材自身。
+func removeMaterialIDFromStoryPlotCards(cards StoryPlotCardCollection, materialID string) StoryPlotCardCollection {
 	for index := range cards.Items {
 		kept := make([]string, 0, len(cards.Items[index].MaterialIDs))
 		for _, existing := range cards.Items[index].MaterialIDs {

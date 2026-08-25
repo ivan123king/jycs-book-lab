@@ -832,6 +832,7 @@ func TestStoryPlotCardsPersistChapterRangesAndSnapshots(t *testing.T) {
 		Dimensions: []StoryPlotDimension{
 			{ID: "relationship", Name: "人物关系", Order: 1, Content: "关系由误判转向正面冲突。"},
 			{ID: "turn", Name: "转折", Order: 2, Content: "第三章用行动揭开误会。"},
+			{ID: "empty", Name: "空维度", Order: 3, Content: ""},
 		},
 		TypeSnapshots: []StoryPlotTypeSnapshot{
 			{
@@ -841,6 +842,7 @@ func TestStoryPlotCardsPersistChapterRangesAndSnapshots(t *testing.T) {
 				Dimensions: []StoryPlotDimension{
 					{ID: "relationship", Name: "人物关系", Order: 1, Content: "关系由误判转向正面冲突。"},
 					{ID: "turn", Name: "转折", Order: 2, Content: "第三章用行动揭开误会。"},
+					{ID: "empty", Name: "空维度", Order: 3, Content: ""},
 				},
 			},
 		},
@@ -869,6 +871,23 @@ func TestStoryPlotCardsPersistChapterRangesAndSnapshots(t *testing.T) {
 	}
 	if reopened.Plan.Types[0].Dimensions[0].ID != "core-event" {
 		t.Fatalf("剧情卡片临时维度不应改写模板: %+v", reopened.Plan.Types[0].Dimensions)
+	}
+	materialDraft, err := BuildMaterialDraftFromCard(BuildMaterialDraftFromCardRequest{
+		BookPath: bookPath,
+		CardID:   updatedResult.Card.ID,
+	})
+	if err != nil {
+		t.Fatalf("生成剧情素材草稿失败: %v", err)
+	}
+	if materialDraft.MaterialType != analysisKindStoryPlot || materialDraft.Summary != "误会在前两章铺开，第三章完成情绪爆发。" {
+		t.Fatalf("剧情素材草稿基础信息不正确: %+v", materialDraft)
+	}
+	if strings.Contains(materialDraft.Content, "来源章节") || strings.Contains(materialDraft.Content, "剧情简介") ||
+		strings.Contains(materialDraft.Content, "未填写") || strings.Contains(materialDraft.Content, "空维度") {
+		t.Fatalf("剧情素材可复用方法不应混入来源信息或空维度: %q", materialDraft.Content)
+	}
+	if !strings.Contains(materialDraft.Content, "人物关系") || !strings.Contains(materialDraft.Content, "转折") {
+		t.Fatalf("剧情素材可复用方法应保留已填写维度: %q", materialDraft.Content)
 	}
 
 	_, err = SplitChapterFromStart(SplitChapterRequest{

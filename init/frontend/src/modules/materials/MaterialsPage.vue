@@ -15,6 +15,8 @@ import {
   NSpace,
   NSpin,
   NTag,
+  NTabPane,
+  NTabs,
 } from 'naive-ui'
 import { BookOpen, Edit3, Eye, Library, MapPinned, Save, Search, Trash2 } from 'lucide-vue-next'
 import { DeleteMaterial, OpenMaterialWorkspace, UpdateMaterial } from '@wails/go/main/App'
@@ -37,7 +39,7 @@ const deleting = ref(false)
 const errorMessage = ref('')
 const noticeMessage = ref('')
 const keyword = ref('')
-const typeFilter = ref<string | null>(null)
+const activeMaterialType = ref<'writingTechnique' | 'storyPlot'>('writingTechnique')
 const tagFilter = ref<string | null>(null)
 const selectedMaterialId = ref('')
 const detailOpen = ref(false)
@@ -82,18 +84,30 @@ const filteredMaterials = computed(() => {
       sourceText.toLowerCase().includes(cleanKeyword) ||
       sourceSummary.toLowerCase().includes(cleanKeyword) ||
       material.tagIds.some((tag) => tag.toLowerCase().includes(cleanKeyword)) ||
+      materialTypeLabel(material.materialType).toLowerCase().includes(cleanKeyword) ||
       deconstructionTypeName(material).toLowerCase().includes(cleanKeyword) ||
       dimensionName(material).toLowerCase().includes(cleanKeyword)
     return (
       hitKeyword &&
-      (!typeFilter.value || material.materialType === typeFilter.value) &&
+      material.materialType === activeMaterialType.value &&
       (!tagFilter.value || material.tagIds.includes(tagFilter.value))
     )
   })
 })
 
-const typeOptions = computed(() => {
-  return uniqueStringOptions(materials.value.map((material) => material.materialType), materialTypeLabel)
+// 素材页一级 TAB 固定区分写作手法素材和剧情拆解素材，避免两个复用方向混在同一列表。
+const materialTypeCounts = computed(() => {
+  return materials.value.reduce(
+    (counts, material) => {
+      if (material.materialType === 'storyPlot') {
+        counts.storyPlot += 1
+      } else {
+        counts.writingTechnique += 1
+      }
+      return counts
+    },
+    { writingTechnique: 0, storyPlot: 0 },
+  )
 })
 
 const tagOptions = computed(() => {
@@ -128,7 +142,7 @@ async function loadWorkspace() {
   loading.value = true
   try {
     workspace.value = await OpenMaterialWorkspace(bookPath)
-    selectedMaterialId.value = filteredMaterials.value[0]?.id ?? materials.value[0]?.id ?? ''
+    selectedMaterialId.value = filteredMaterials.value[0]?.id ?? ''
     syncDetailEditor()
   } catch (error) {
     errorMessage.value = getErrorMessage(error)
@@ -209,7 +223,7 @@ async function deleteSelectedMaterial(material: library.Material) {
       workspace.value.materialContents = result.materialContents
       workspace.value.deconstructionCards = result.deconstructionCards
     }
-    selectedMaterialId.value = filteredMaterials.value[0]?.id ?? materials.value[0]?.id ?? ''
+    selectedMaterialId.value = filteredMaterials.value[0]?.id ?? ''
     detailOpen.value = false
     editOpen.value = false
     syncDetailEditor()
@@ -308,6 +322,13 @@ function explanationText(material: library.Material) {
   return materialContents.value[material.id] || firstSource(material)?.snapshot.sourceSummary || ''
 }
 
+/**
+ * 剧情素材的摘要展示剧情简介，写作手法素材的摘要展示原文片段。
+ */
+function summaryFieldLabel(material: library.Material) {
+  return material.materialType === 'storyPlot' ? '剧情简介' : '原文'
+}
+
 function splitDeconstructionTitle(value: string) {
   return value.split('/').map((item) => item.trim()).filter(Boolean)
 }
@@ -340,6 +361,10 @@ function splitList(value: string) {
 }
 
 watch(activeBookPath, loadWorkspace, { immediate: true })
+watch(activeMaterialType, () => {
+  selectedMaterialId.value = filteredMaterials.value[0]?.id ?? ''
+  syncDetailEditor()
+})
 watch(selectedMaterial, syncDetailEditor)
 
 defineExpose({
@@ -357,6 +382,19 @@ defineExpose({
       <n-alert v-if="errorMessage" type="error" class="materials-alert">{{ errorMessage }}</n-alert>
       <n-alert v-else-if="noticeMessage" type="success" class="materials-alert">{{ noticeMessage }}</n-alert>
 
+      <n-tabs v-model:value="activeMaterialType" type="segment" class="material-type-tabs">
+        <n-tab-pane name="writingTechnique">
+          <template #tab>
+            <span class="material-tab-label">写作手法素材 {{ materialTypeCounts.writingTechnique }}</span>
+          </template>
+        </n-tab-pane>
+        <n-tab-pane name="storyPlot">
+          <template #tab>
+            <span class="material-tab-label">剧情拆解素材 {{ materialTypeCounts.storyPlot }}</span>
+          </template>
+        </n-tab-pane>
+      </n-tabs>
+
       <div class="materials-filter-bar">
         <n-input v-model:value="keyword" clearable placeholder="搜索标题、原文、拆解说明、类型、维度、标签">
           <template #prefix>
@@ -364,13 +402,15 @@ defineExpose({
           </template>
         </n-input>
         <div class="filter-selects">
-          <n-select v-model:value="typeFilter" clearable :options="typeOptions" placeholder="类型" />
           <n-select v-model:value="tagFilter" clearable :options="tagOptions" placeholder="标签" />
         </div>
       </div>
 
       <div class="materials-grid">
-        <n-empty v-if="filteredMaterials.length === 0" description="暂无符合条件的素材" />
+        <n-empty
+          v-if="filteredMaterials.length === 0"
+          :description="activeMaterialType === 'storyPlot' ? '暂无符合条件的剧情拆解素材' : '暂无符合条件的写作手法素材'"
+        />
         <n-card
           v-for="material in filteredMaterials"
           :key="material.id"
@@ -379,6 +419,7 @@ defineExpose({
         >
           <div class="material-card-head">
             <n-space size="small">
+              <n-tag size="small">{{ materialTypeLabel(material.materialType) }}</n-tag>
               <n-tag type="success" size="small">{{ deconstructionTypeName(material) }}</n-tag>
               <n-tag size="small">{{ dimensionName(material) }}</n-tag>
             </n-space>
@@ -431,6 +472,10 @@ defineExpose({
       <template v-if="selectedMaterial">
         <div class="detail-meta-grid">
           <div>
+            <span>素材类型</span>
+            <strong>{{ materialTypeLabel(selectedMaterial.materialType) }}</strong>
+          </div>
+          <div>
             <span>拆解类型</span>
             <strong>{{ deconstructionTypeName(selectedMaterial) }}</strong>
           </div>
@@ -440,8 +485,8 @@ defineExpose({
           </div>
         </div>
         <section class="material-field">
-          <strong>原文</strong>
-          <p>{{ originalText(selectedMaterial) || '暂无原文' }}</p>
+          <strong>{{ summaryFieldLabel(selectedMaterial) }}</strong>
+          <p>{{ originalText(selectedMaterial) || `暂无${summaryFieldLabel(selectedMaterial)}` }}</p>
         </section>
         <section class="material-field">
           <strong>拆解说明</strong>
@@ -462,7 +507,7 @@ defineExpose({
             <template #icon>
               <BookOpen :size="16" />
             </template>
-            回到原文
+            回到来源
           </n-button>
           <n-button type="primary" secondary @click="selectedMaterial && openEdit(selectedMaterial)">
             <template #icon>
@@ -480,7 +525,7 @@ defineExpose({
           <n-form-item label="标题">
             <n-input v-model:value="editTitle" placeholder="素材标题" />
           </n-form-item>
-          <n-form-item label="原文">
+          <n-form-item :label="summaryFieldLabel(selectedMaterial)">
             <n-input
               v-model:value="editSummary"
               type="textarea"
@@ -521,6 +566,17 @@ defineExpose({
   margin-bottom: 14px;
 }
 
+.material-type-tabs {
+  margin-bottom: 12px;
+}
+
+.material-tab-label {
+  display: inline-flex;
+  min-width: 96px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .materials-filter-bar {
   display: grid;
   grid-template-columns: minmax(260px, 1fr);
@@ -530,7 +586,7 @@ defineExpose({
 
 .filter-selects {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(180px, 280px);
   gap: 8px;
 }
 

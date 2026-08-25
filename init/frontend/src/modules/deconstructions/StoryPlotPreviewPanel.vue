@@ -28,9 +28,12 @@ import {
   Plus,
   Save,
   Search,
+  Sparkles,
   Trash2,
 } from 'lucide-vue-next'
 import {
+  BuildMaterialDraftFromCard,
+  CreateMaterialFromCard,
   CreateStoryPlotCard,
   DeleteStoryPlotCard,
   GetChapterContent,
@@ -104,6 +107,7 @@ const editOpen = ref(false)
 const detailOpen = ref(false)
 const chapterContentOpen = ref(false)
 const closeConfirmOpen = ref(false)
+const materialOpen = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const selectedCardId = ref('')
 const draft = ref<StoryPlotCardDraft | null>(null)
@@ -113,6 +117,11 @@ const chapterContent = ref('')
 const chapterContentError = ref('')
 const chapterLoading = ref(false)
 const activeChapterId = ref('')
+const materialTitle = ref('')
+const materialSummary = ref('')
+const materialContent = ref('')
+const materialTagInput = ref('')
+const materialSaving = ref(false)
 const tabIndentSpaces = '    '
 
 const activeBookPath = computed(() => props.project?.book.bookPath ?? '')
@@ -404,6 +413,66 @@ async function deleteStoryPlot(card: StoryPlotCardDraft) {
   }
 }
 
+/**
+ * 从剧情拆解卡片生成可编辑素材草稿；可复用方法只带入已填写的维度内容。
+ */
+async function openMaterialDraft() {
+  const bookPath = activeBookPath.value
+  const card = selectedCard.value
+  if (!bookPath || !card) {
+    return
+  }
+  pageError.value = ''
+  pageNotice.value = ''
+  try {
+    const materialDraft = await BuildMaterialDraftFromCard({
+      bookPath,
+      cardId: card.id,
+    } as library.BuildMaterialDraftFromCardRequest)
+    materialTitle.value = materialDraft.title
+    materialSummary.value = materialDraft.summary
+    materialContent.value = materialDraft.content
+    materialTagInput.value = materialDraft.tagIds.join(', ')
+    materialOpen.value = true
+  } catch (error) {
+    pageError.value = getErrorMessage(error)
+  }
+}
+
+/**
+ * 保存剧情素材到当前小说项目目录；剧情卡片只记录素材 ID，素材自身保留来源快照。
+ */
+async function saveMaterialDraft() {
+  const bookPath = activeBookPath.value
+  const card = selectedCard.value
+  if (!bookPath || !card) {
+    return
+  }
+  materialSaving.value = true
+  pageError.value = ''
+  pageNotice.value = ''
+  try {
+    await CreateMaterialFromCard({
+      bookPath,
+      cardId: card.id,
+      title: materialTitle.value,
+      summary: materialSummary.value,
+      content: materialContent.value,
+      categoryIds: [],
+      tagIds: splitTags(materialTagInput.value),
+    } as library.CreateMaterialFromCardRequest)
+    materialOpen.value = false
+    detailOpen.value = false
+    await loadStoryTemplate()
+    selectedCardId.value = card.id
+    pageNotice.value = '已沉淀为剧情结构素材。'
+  } catch (error) {
+    pageError.value = getErrorMessage(error)
+  } finally {
+    materialSaving.value = false
+  }
+}
+
 function hasUnsavedDraftChanges() {
   return editOpen.value && draft.value !== null && serializeDraftState() !== draftBaseline.value
 }
@@ -594,6 +663,24 @@ function handleDimensionTab(event: KeyboardEvent, dimension: StoryDimensionDraft
   handleTextareaTab(event, dimension.content, (nextValue) => {
     dimension.content = nextValue
     syncActiveDimensions()
+  })
+}
+
+/**
+ * 在剧情素材简介编辑区拦截 Tab，保持多行文本内插入 4 个普通空格。
+ */
+function handleMaterialSummaryTab(event: KeyboardEvent) {
+  handleTextareaTab(event, materialSummary.value, (nextValue) => {
+    materialSummary.value = nextValue
+  })
+}
+
+/**
+ * 在剧情素材可复用方法编辑区拦截 Tab，保持用户整理长文本时的缩进习惯。
+ */
+function handleMaterialContentTab(event: KeyboardEvent) {
+  handleTextareaTab(event, materialContent.value, (nextValue) => {
+    materialContent.value = nextValue
   })
 }
 
@@ -1017,6 +1104,12 @@ defineExpose({
             </template>
             章节内容
           </n-button>
+          <n-button type="primary" secondary @click="openMaterialDraft">
+            <template #icon>
+              <Sparkles :size="16" />
+            </template>
+            沉淀为素材
+          </n-button>
           <n-button secondary @click="openEditDialog(selectedCard!)">
             <template #icon>
               <Edit3 :size="16" />
@@ -1047,6 +1140,60 @@ defineExpose({
           </n-scrollbar>
         </n-spin>
       </div>
+    </n-modal>
+
+    <n-modal v-model:show="materialOpen" preset="card" title="沉淀为剧情结构素材" class="story-detail-modal" :bordered="false">
+      <template v-if="selectedCard">
+        <div class="detail-meta-grid story-material-source-grid">
+          <div>
+            <span class="detail_label">剧情名称</span>
+            <strong>{{ selectedCard.title || '未命名剧情拆解' }}</strong>
+          </div>
+          <div>
+            <span class="detail_label">剧情类型</span>
+            <strong>{{ selectedCard.planTypeName || '剧情结构' }}</strong>
+          </div>
+          <div>
+            <span class="detail_label">章节范围</span>
+            <strong>{{ chapterRangeLabel(selectedCard) }}</strong>
+          </div>
+        </div>
+        <n-form label-placement="top">
+          <n-form-item label="素材标题">
+            <n-input v-model:value="materialTitle" placeholder="例如：装逼打脸桥段的四段式推进" />
+          </n-form-item>
+          <n-form-item label="剧情简介">
+            <n-input
+              v-model:value="materialSummary"
+              type="textarea"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              @keydown="handleMaterialSummaryTab"
+            />
+          </n-form-item>
+          <n-form-item label="可复用方法">
+            <n-input
+              v-model:value="materialContent"
+              type="textarea"
+              :autosize="{ minRows: 9, maxRows: 16 }"
+              @keydown="handleMaterialContentTab"
+            />
+          </n-form-item>
+          <n-form-item label="标签">
+            <n-input v-model:value="materialTagInput" placeholder="用逗号分隔，例如：装逼打脸, 爽点, 围观反应" />
+          </n-form-item>
+        </n-form>
+      </template>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="materialOpen = false">取消</n-button>
+          <n-button type="primary" :loading="materialSaving" @click="saveMaterialDraft">
+            <template #icon>
+              <Sparkles :size="16" />
+            </template>
+            保存素材
+          </n-button>
+        </n-space>
+      </template>
     </n-modal>
   </section>
 </template>
