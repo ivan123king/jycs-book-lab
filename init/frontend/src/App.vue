@@ -6,11 +6,7 @@ import { Plus, RefreshCw } from 'lucide-vue-next'
 import { OpenLastReadingSession } from '@wails/go/main/App'
 import AppSidebar from '@/components/app/AppSidebar.vue'
 import AppTopbar from '@/components/app/AppTopbar.vue'
-import {
-  defaultCurrentBook,
-  demoAnalysisRows,
-  demoChapters,
-} from '@/data/workbenchFixtures'
+import { defaultCurrentBook } from '@/data/workbenchFixtures'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import DeconstructionCardsPage from '@/modules/deconstructions/DeconstructionCardsPage.vue'
 import StoryPlotPreviewPanel from '@/modules/deconstructions/StoryPlotPreviewPanel.vue'
@@ -275,9 +271,7 @@ onMounted(restoreLastOpenedBook)
               />
               <AnalysisPage
                 v-else-if="activeView === 'analysis'"
-                :current-book="currentBook"
-                :rows="demoAnalysisRows"
-                :chapters="demoChapters"
+                :project="currentProject"
               />
               <SettingsPage v-else />
             </n-scrollbar>

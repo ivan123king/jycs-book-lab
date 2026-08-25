@@ -216,6 +216,10 @@ p {
     box-shadow: 0 12px 28px rgba(31, 45, 61, 0.08);
 }
 
+.analysis-grid{
+    margin-top: 10px;
+}
+
 .card-kicker {
     color: #2f6f6d;
     font-size: 12px;

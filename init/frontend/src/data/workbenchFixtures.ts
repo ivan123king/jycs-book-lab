@@ -1,5 +1,4 @@
 // workbenchFixtures.ts 集中保存第一阶段页面原型数据，避免 App.vue 和页面组件混杂静态样例。
-import type { DemoAnalysisRow } from '@/types/analysis'
 import type { CurrentBookSummary } from '@/types/currentBook'
 import type { DemoDeconstructionCard } from '@/types/deconstruction'
 import type { DemoMaterial } from '@/types/material'
@@ -85,11 +84,4 @@ export const demoPlanFields: DemoPlanField[] = [
   { key: '2', dimension: '场景', type: '场景拆解', field: '情绪变化', fieldType: '长文本', required: '是', visible: '显示' },
   { key: '3', dimension: '人物', type: '对白拆解', field: '潜台词', fieldType: '长文本', required: '否', visible: '显示' },
   { key: '4', dimension: '结构', type: '意象拆解', field: '前后呼应', fieldType: '长文本', required: '否', visible: '显示' },
-]
-
-export const demoAnalysisRows: DemoAnalysisRow[] = [
-  { type: '场景拆解', count: 46, percent: 36 },
-  { type: '对白拆解', count: 32, percent: 25 },
-  { type: '人物弧光', count: 27, percent: 21 },
-  { type: '意象拆解', count: 23, percent: 18 },
 ]
