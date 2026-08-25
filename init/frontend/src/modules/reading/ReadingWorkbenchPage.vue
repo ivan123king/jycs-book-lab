@@ -210,6 +210,24 @@ const filteredCatalogChapters = computed(() => {
 
 const catalogPageCount = computed(() => Math.max(1, Math.ceil(filteredCatalogChapters.value.length / catalogPageSize)))
 
+// 目录页码下拉只描述当前筛选结果的页范围，不写入小说项目目录。
+const catalogPageOptions = computed(() =>
+  Array.from({ length: catalogPageCount.value }, (_, index) => {
+    const page = index + 1
+    const start = index * catalogPageSize
+    const pageChapters = filteredCatalogChapters.value.slice(start, start + catalogPageSize)
+    const firstChapter = pageChapters[0]
+    const lastChapter = pageChapters[pageChapters.length - 1]
+    return {
+      label:
+        firstChapter && lastChapter
+          ? `第 ${page} 页（第 ${firstChapter.order}-${lastChapter.order} 章）`
+          : `第 ${page} 页（无匹配章节）`,
+      value: page,
+    }
+  }),
+)
+
 const catalogPageChapters = computed(() => {
   const page = Math.min(catalogPage.value, catalogPageCount.value)
   const start = (page - 1) * catalogPageSize
@@ -934,6 +952,10 @@ watch(catalogSearch, () => {
   catalogPage.value = 1
 })
 
+watch(catalogPageCount, (pageCount) => {
+  catalogPage.value = clampNumber(catalogPage.value, 1, pageCount)
+})
+
 onMounted(async () => {
   await loadReadingSession()
   await focusSourceTextFromCard()
@@ -1140,8 +1162,15 @@ onBeforeUnmount(() => {
           </div>
         </n-scrollbar>
         <div class="catalog-actions">
-          <n-button :disabled="catalogPage <= 1" @click="catalogPage -= 1">上一目录页</n-button>
-          <n-button :disabled="catalogPage >= catalogPageCount" @click="catalogPage += 1">下一目录页</n-button>
+          <n-button :disabled="catalogPage <= 1" @click="catalogPage -= 1">上一页</n-button>
+          <n-select
+            v-model:value="catalogPage"
+            class="catalog-page-select"
+            :options="catalogPageOptions"
+            size="small"
+            aria-label="选择目录页"
+          />
+          <n-button :disabled="catalogPage >= catalogPageCount" @click="catalogPage += 1">下一页</n-button>
         </div>
       </n-drawer-content>
     </n-drawer>

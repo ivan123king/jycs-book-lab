@@ -233,6 +233,11 @@
     margin-top: 14px;
 }
 
+.catalog-page-select {
+    width: 208px;
+    flex: 0 0 208px;
+}
+
 .deconstruction-modal {
     width: min(720px, calc(100vw - 32px));
 }
