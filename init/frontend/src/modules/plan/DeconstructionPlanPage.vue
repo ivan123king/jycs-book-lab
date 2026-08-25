@@ -254,25 +254,19 @@ onMounted(loadWorkspace)
 
 <template>
   <section class="page-section">
-    <div class="section-heading">
-      <div>
-        <h1>拆解方案</h1>
-        <p>按当前书管理写作模板和剧情模板；阅读中选文拆解暂时只使用当前写作模板。</p>
-      </div>
-      <n-space>
-        <n-button
-          type="primary"
-          :disabled="!selectedTemplateFile || selectedTemplateFile === currentTemplateFileName"
-          :loading="saving"
-          @click="setSelectedTemplateAsCurrent"
-        >
-          <template #icon>
-            <CheckCircle :size="16" />
-          </template>
-          设为当前模板
-        </n-button>
-      </n-space>
-    </div>
+    <n-space justify="end" class="plan-page-actions">
+      <n-button
+        type="primary"
+        :disabled="!selectedTemplateFile || selectedTemplateFile === currentTemplateFileName"
+        :loading="saving"
+        @click="setSelectedTemplateAsCurrent"
+      >
+        <template #icon>
+          <CheckCircle :size="16" />
+        </template>
+        设为当前模板
+      </n-button>
+    </n-space>
 
     <n-alert v-if="!activeBookPath" type="info" class="page-alert">
       请先从书库打开一本小说。拆解方案和模板都会保存在该小说项目目录中。

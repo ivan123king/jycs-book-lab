@@ -1,0 +1,44 @@
+/* responsive.css 汇总全局响应式断点，保持模块拆分后的覆盖顺序稳定。 */
+@media (max-width: 1180px) {
+    .import-grid,
+    .import-review-layout,
+    .list-detail-layout,
+    .plan-layout,
+    .plan-editor-grid,
+    .settings-grid,
+    .analysis-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .workbench-panel {
+        min-height: 420px;
+    }
+}
+
+@media (max-width: 860px) {
+    .library-page-header {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .library-page-actions {
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .library-page-search {
+        flex: 0 0 170px;
+    }
+}
+
+@media (max-width: 900px) {
+    .story-edit-layout,
+    .chapter-content-layout,
+    .story-range-control,
+    .story-type-control,
+    .story-panel .cards-grid,
+    .story-filter-selects {
+        grid-template-columns: 1fr;
+    }
+}

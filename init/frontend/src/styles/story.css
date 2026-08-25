@@ -1,0 +1,241 @@
+/* story.css 定义剧情拆解页面、剧情弹框、章节内容查看和剧情素材来源样式。 */
+.story-template-note {
+    margin-bottom: 14px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.story-filter-selects {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.story-panel .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 15px;
+}
+
+.story-panel .story-card {
+    min-height: 178px;
+    border: 1px solid transparent;
+    transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.story-panel .story-card:hover {
+    border-color: rgba(42, 110, 245, 0.36);
+    transform: translateY(-1px);
+}
+
+.story-panel .story-card .n-card__content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.story-panel .writing-card-head {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.story-panel .writing-card-head span {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.story-panel .story-card h2 {
+    display: -webkit-box;
+    min-height: 46px;
+    margin: 12px 0 10px;
+    overflow: hidden;
+    color: #17212b;
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.story-panel .card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.story-panel .card-actions .n-button {
+    min-width: 0;
+}
+
+.story-plot-modal {
+    width: min(1080px, calc(100vw - 32px));
+}
+
+.story-detail-modal,
+.chapter-content-modal,
+.story-close-modal {
+    width: min(920px, calc(100vw - 32px));
+}
+
+.story-close-modal {
+    width: min(420px, calc(100vw - 32px));
+}
+
+.close-confirm-text {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.story-edit-layout {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 14px;
+}
+
+.story-type-panel,
+.story-form-panel,
+.story-type-editor,
+.story-dimension-item,
+.chapter-content-list {
+    background: #f7f9fb;
+    border: 1px solid #e3e8ee;
+    border-radius: 8px;
+}
+
+.story-type-panel {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 14px;
+}
+
+.story-form-panel {
+    padding: 14px;
+}
+
+.story-inline-control {
+    display: grid;
+    align-items: center;
+    justify-content: start;
+    gap: 10px;
+    width: 100%;
+}
+
+.story-range-control {
+    grid-template-columns: minmax(220px, 520px) 112px;
+}
+
+.chapter-content-button {
+    width: 112px;
+}
+
+.story-range-summary {
+    margin: 8px 0 14px;
+    color: #647180;
+    font-size: 12px;
+}
+
+.story-range-warning {
+    margin: 8px 0 14px;
+}
+
+.story-type-editor {
+    margin-bottom: 18px;
+    padding: 14px;
+}
+
+.story-type-control {
+    grid-template-columns: minmax(220px, 420px) 104px;
+}
+
+.story-type-control .n-button {
+    width: 104px;
+}
+
+.story-dimension-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.story-dimension-item {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+}
+
+.story-dimension-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.dimension-collapsed-summary {
+    min-height: 22px;
+    padding: 8px 10px;
+    overflow: hidden;
+    color: #647180;
+    font-size: 13px;
+    background: #eef3f6;
+    border-radius: 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.story-detail-dimensions {
+    display: grid;
+    gap: 10px;
+}
+
+.story-detail-dimensions div {
+    padding: 10px 12px;
+    background: #f6f8fa;
+    border-radius: 8px;
+}
+
+.story-detail-dimensions strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.story-material-source-grid {
+    margin-bottom: 16px;
+}
+
+.detail_label {
+    margin-right: 10px;
+}
+
+.chapter-content-layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 520px;
+}
+
+.chapter-content-list {
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.chapter-content-text {
+    height: 520px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e3e8ee;
+    border-radius: 8px;
+}
+
+.chapter-content-text pre {
+    margin: 0;
+    color: #24313d;
+    font-family: "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
+    line-height: 2;
+    white-space: pre-wrap;
+}

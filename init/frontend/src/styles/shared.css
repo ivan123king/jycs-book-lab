@@ -1,0 +1,147 @@
+/* shared.css 定义跨页面复用的区块、卡片、列表和来源追溯基础样式。 */
+.muted,
+.panel-subtitle,
+.project-path {
+    color: #6b7684;
+    font-size: 12px;
+}
+
+.page-section {
+    min-height: calc(100vh - 68px);
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.section-heading,
+.item-card-head,
+.panel-title-row,
+.card-footer,
+.library-toolbar,
+.chapter-page-footer,
+.reader-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.section-heading {
+    margin-bottom: 18px;
+}
+
+.section-heading h1 {
+    color: #15202b;
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.section-heading p {
+    margin-top: 6px;
+    color: #647180;
+    font-size: 13px;
+}
+
+.project-card,
+.workspace-card,
+.item-card,
+.material-card,
+.detail-panel,
+.dimension-card,
+.fields-card,
+.settings-grid .n-card,
+.analysis-grid .n-card,
+.page-section > .n-grid .n-card {
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(31, 45, 61, 0.08);
+}
+
+.card-kicker {
+    color: #2f6f6d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.project-card h2,
+.item-card h2,
+.material-card h2 {
+    margin: 6px 0 6px;
+    color: #17212b;
+    font-size: 17px;
+}
+
+.project-path {
+    min-height: 32px;
+    margin-top: 12px;
+    padding: 8px;
+    overflow: hidden;
+    background: #f3f6f8;
+    border-radius: 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.metric-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.card-footer {
+    margin-top: 14px;
+    color: #758190;
+    font-size: 12px;
+}
+
+.page-alert {
+    margin-top: 16px;
+    border-radius: 8px;
+}
+
+.card-actions {
+    margin-top: 16px;
+}
+
+.import-grid,
+.import-review-layout,
+.list-detail-layout,
+.plan-layout,
+.settings-grid,
+.analysis-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 16px;
+}
+
+.panel-title {
+    margin-bottom: 12px;
+    color: #17212b;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.source-box {
+    margin-bottom: 14px;
+    border-radius: 8px;
+}
+
+.stack-list {
+    display: grid;
+    gap: 14px;
+}
+
+.item-card p,
+.material-card p {
+    margin: 10px 0;
+    color: #40505e;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.source-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0;
+    color: #677586;
+    font-size: 12px;
+}

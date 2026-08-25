@@ -1,0 +1,97 @@
+/* shell.css 定义应用壳层、侧边栏、顶部栏和内容滚动容器样式。 */
+.app-shell {
+    height: 100vh;
+    background: #eef1f4;
+}
+
+.sidebar {
+    background: #fbfcfd;
+}
+
+.brand-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 18px 18px;
+}
+
+.brand-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    color: #fff;
+    background: linear-gradient(135deg, #2f6f6d, #4258a6);
+    border-radius: 8px;
+    place-items: center;
+}
+
+.brand-title {
+    color: #17212b;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.brand-subtitle,
+.page-context,
+.storage-text {
+    color: #6b7684;
+    font-size: 12px;
+}
+
+.sidebar-footer {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+}
+
+.storage-alert {
+    border-radius: 8px;
+}
+
+.storage-title {
+    margin-bottom: 4px;
+    color: #24313d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    padding: 0 24px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+}
+
+.page-title {
+    color: #18222d;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.content-shell {
+    height: calc(100vh - 68px);
+    background: #eef1f4;
+}
+
+.content-shell-full {
+    height: 100vh;
+}
+
+.content-scroll {
+    height: calc(100vh - 68px);
+}
+
+.content-scroll-full {
+    height: 100vh;
+}

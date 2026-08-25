@@ -1,0 +1,89 @@
+/* plan.css 定义拆解方案列表、类型编辑和维度编辑布局样式。 */
+.plan-page-actions {
+    margin-bottom: 12px;
+}
+
+.template-list-item,
+.type-list-item {
+    display: grid;
+    width: 100%;
+    gap: 5px;
+    padding: 10px 11px;
+    color: #23313f;
+    text-align: left;
+    cursor: pointer;
+    background: #f6f8fa;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.template-list-item.active,
+.type-list-item.active {
+    background: #edf7f4;
+    border-color: #75b8a8;
+}
+
+.template-list-item.selected:not(.active) {
+    background: #f2f5ff;
+    border-color: #9aa8dc;
+}
+
+.template-list-item span,
+.type-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.template-list-item small {
+    color: #71808d;
+}
+
+.template-name-row,
+.save-as-row,
+.dimension-editor-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.plan-editor-grid {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.type-list-panel,
+.type-editor-panel {
+    padding: 14px;
+    background: #f7f9fb;
+    border: 1px solid #e3e8ee;
+    border-radius: 8px;
+}
+
+.type-list-panel {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+
+.type-name-input,
+.dimension-heading {
+    margin-top: 14px;
+}
+
+.dimension-editor-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.dimension-editor-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    margin-bottom: 0;
+}

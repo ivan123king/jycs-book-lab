@@ -1,0 +1,29 @@
+/* analysis.css 定义基础分析页的全局统计网格和章节分布行样式。 */
+.analysis-grid {
+    margin-top: 10px;
+}
+
+.detail-panel {
+    align-self: start;
+}
+
+.progress-row {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.progress-row > div,
+.chapter-stat-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.chapter-stat-row {
+    grid-template-columns: 150px 1fr 36px;
+    margin-bottom: 14px;
+    color: #334252;
+    font-size: 13px;
+}
