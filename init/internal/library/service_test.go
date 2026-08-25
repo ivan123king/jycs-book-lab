@@ -760,6 +760,137 @@ func TestDeconstructionPlanTemplatesPersistPerBook(t *testing.T) {
 	}
 }
 
+// TestStoryPlotCardsPersistChapterRangesAndSnapshots 覆盖剧情拆解从模板加载、草稿、正式保存到删除的本地闭环。
+func TestStoryPlotCardsPersistChapterRangesAndSnapshots(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourcePath := filepath.Join(t.TempDir(), "剧情线小说.txt")
+	sourceText := "第一章 开端\nA 段正文。\n\n第二章 误会\nB 段正文。\n\n第三章 爆发\nC 段正文。\n"
+	if err := os.WriteFile(sourcePath, []byte(sourceText), 0o644); err != nil {
+		t.Fatalf("写入测试小说失败: %v", err)
+	}
+	result, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-story-plot-001",
+		SourcePath: sourcePath,
+		BookName:   "剧情线小说",
+	})
+	if err != nil {
+		t.Fatalf("确认导入失败: %v", err)
+	}
+	bookPath := result.Project.Book.BookPath
+
+	workspace, err := OpenStoryPlotWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("打开剧情工作区失败: %v", err)
+	}
+	if workspace.Plan.AnalysisKind != analysisKindStoryPlot || workspace.CurrentTemplateFileName != systemStoryTemplateFileName {
+		t.Fatalf("剧情模板加载不正确: %+v", workspace)
+	}
+	if len(workspace.StoryPlotCards.Items) != 0 {
+		t.Fatalf("初始剧情卡片数量 = %d, want 0", len(workspace.StoryPlotCards.Items))
+	}
+	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(storyPlotCardsRelativePath))); err != nil {
+		t.Fatalf("缺少剧情卡片数据文件: %v", err)
+	}
+
+	draftResult, err := CreateStoryPlotCard(SaveStoryPlotCardRequest{
+		BookPath:          bookPath,
+		Status:            storyPlotStatusDraft,
+		ChapterRangeInput: "1-9",
+		TemplateFileName:  workspace.CurrentTemplateFileName,
+		TemplateName:      workspace.Plan.TemplateName,
+		PlanTypeID:        "plot",
+		PlanTypeName:      "剧情分析",
+		TypeSnapshots: []StoryPlotTypeSnapshot{
+			{
+				ID:    "plot",
+				Name:  "剧情分析",
+				Order: 1,
+				Dimensions: []StoryPlotDimension{
+					{ID: "core-event", Name: "核心事件", Order: 1},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("保存剧情草稿失败: %v", err)
+	}
+	if draftResult.Card.Status != storyPlotStatusDraft || len(draftResult.Card.ParseErrors) == 0 {
+		t.Fatalf("草稿应允许无效章节范围并保存解析错误: %+v", draftResult.Card)
+	}
+
+	updatedResult, err := UpdateStoryPlotCard(SaveStoryPlotCardRequest{
+		BookPath:          bookPath,
+		CardID:            draftResult.Card.ID,
+		Status:            storyPlotStatusCompleted,
+		Title:             "误会到爆发",
+		Summary:           "误会在前两章铺开，第三章完成情绪爆发。",
+		ChapterRangeInput: "1-2, 2, 3",
+		TemplateFileName:  draftResult.Card.TemplateFileName,
+		TemplateName:      draftResult.Card.TemplateName,
+		PlanTypeID:        "custom-plot",
+		PlanTypeName:      "误会反转",
+		Dimensions: []StoryPlotDimension{
+			{ID: "relationship", Name: "人物关系", Order: 1, Content: "关系由误判转向正面冲突。"},
+			{ID: "turn", Name: "转折", Order: 2, Content: "第三章用行动揭开误会。"},
+		},
+		TypeSnapshots: []StoryPlotTypeSnapshot{
+			{
+				ID:    "custom-plot",
+				Name:  "误会反转",
+				Order: 1,
+				Dimensions: []StoryPlotDimension{
+					{ID: "relationship", Name: "人物关系", Order: 1, Content: "关系由误判转向正面冲突。"},
+					{ID: "turn", Name: "转折", Order: 2, Content: "第三章用行动揭开误会。"},
+				},
+			},
+		},
+		TagIDs: []string{"误会", "误会", "情绪爆发"},
+	})
+	if err != nil {
+		t.Fatalf("正式保存剧情卡片失败: %v", err)
+	}
+	if updatedResult.Card.Status != storyPlotStatusCompleted || len(updatedResult.Card.ParseErrors) != 0 {
+		t.Fatalf("正式剧情卡片状态或解析错误不正确: %+v", updatedResult.Card)
+	}
+	if len(updatedResult.Card.ChapterRefs) != 3 || updatedResult.Card.ChapterRefs[0].ChapterOrder != 1 || updatedResult.Card.ChapterRefs[2].ChapterOrder != 3 {
+		t.Fatalf("章节范围未按序去重解析: %+v", updatedResult.Card.ChapterRefs)
+	}
+	if updatedResult.Card.PlanTypeName != "误会反转" || updatedResult.Card.Dimensions[0].Name != "人物关系" ||
+		updatedResult.Card.Dimensions[0].Content != "关系由误判转向正面冲突。" || len(updatedResult.Card.TagIDs) != 2 {
+		t.Fatalf("剧情类型、维度快照或标签未正确保存: %+v", updatedResult.Card)
+	}
+
+	reopened, err := OpenStoryPlotWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("重新打开剧情工作区失败: %v", err)
+	}
+	if len(reopened.StoryPlotCards.Items) != 1 || reopened.StoryPlotCards.Items[0].Title != "误会到爆发" {
+		t.Fatalf("剧情卡片未持久化: %+v", reopened.StoryPlotCards.Items)
+	}
+	if reopened.Plan.Types[0].Dimensions[0].ID != "core-event" {
+		t.Fatalf("剧情卡片临时维度不应改写模板: %+v", reopened.Plan.Types[0].Dimensions)
+	}
+
+	_, err = SplitChapterFromStart(SplitChapterRequest{
+		BookPath:         bookPath,
+		ChapterID:        updatedResult.Card.ChapterRefs[0].ChapterID,
+		NewTitle:         "第一章 A",
+		NewContent:       "A 段正文。\n",
+		RemainingContent: "剩余正文。",
+	})
+	if err == nil || !strings.Contains(err.Error(), "剧情拆解引用") {
+		t.Fatalf("已有剧情引用的章节拆分错误 = %v, want 包含 剧情拆解引用", err)
+	}
+
+	deleted, err := DeleteStoryPlotCard(DeleteStoryPlotCardRequest{BookPath: bookPath, CardID: updatedResult.Card.ID})
+	if err != nil {
+		t.Fatalf("删除剧情卡片失败: %v", err)
+	}
+	if len(deleted.StoryPlotCards.Items) != 0 {
+		t.Fatalf("删除后剧情卡片数量 = %d, want 0", len(deleted.StoryPlotCards.Items))
+	}
+}
+
 // TestSplitChapterFromStartSupportsRepeatedUnknownChapterSplit 覆盖未知章节按顺序拆成多个章节的目录修正流程。
 func TestSplitChapterFromStartSupportsRepeatedUnknownChapterSplit(t *testing.T) {
 	libraryPath := t.TempDir()

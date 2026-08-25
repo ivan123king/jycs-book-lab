@@ -14,11 +14,15 @@ export function CreateLibraryMaterial(arg1:library.CreateLibraryMaterialRequest)
 
 export function CreateMaterialFromCard(arg1:library.CreateMaterialFromCardRequest):Promise<library.CreateMaterialResult>;
 
+export function CreateStoryPlotCard(arg1:library.SaveStoryPlotCardRequest):Promise<library.SaveStoryPlotCardResult>;
+
 export function DeleteDeconstructionCard(arg1:library.DeleteDeconstructionCardRequest):Promise<library.DeleteDeconstructionCardResult>;
 
 export function DeleteLibraryMaterial(arg1:library.DeleteLibraryMaterialRequest):Promise<library.LibraryMaterialCollection>;
 
 export function DeleteMaterial(arg1:library.DeleteMaterialRequest):Promise<library.DeleteMaterialResult>;
+
+export function DeleteStoryPlotCard(arg1:library.DeleteStoryPlotCardRequest):Promise<library.DeleteStoryPlotCardResult>;
 
 export function GetChapterContent(arg1:library.ChapterContentRequest):Promise<library.ChapterContentResult>;
 
@@ -41,6 +45,8 @@ export function OpenLibraryMaterialPage(arg1:library.LibraryMaterialPageRequest)
 export function OpenMaterialWorkspace(arg1:string):Promise<library.MaterialWorkspace>;
 
 export function OpenReadingSession(arg1:string):Promise<library.ReadingSession>;
+
+export function OpenStoryPlotWorkspace(arg1:string):Promise<library.StoryPlotWorkspace>;
 
 export function PreviewNovelImport():Promise<library.ImportDraft>;
 
@@ -69,3 +75,5 @@ export function UpdateDeconstructionCard(arg1:library.UpdateDeconstructionCardRe
 export function UpdateLibraryMaterial(arg1:library.UpdateLibraryMaterialRequest):Promise<library.LibraryMaterialListItem>;
 
 export function UpdateMaterial(arg1:library.UpdateMaterialRequest):Promise<library.UpdateMaterialResult>;
+
+export function UpdateStoryPlotCard(arg1:library.SaveStoryPlotCardRequest):Promise<library.SaveStoryPlotCardResult>;

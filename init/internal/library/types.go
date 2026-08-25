@@ -258,6 +258,100 @@ type DeconstructionCardsWorkspace struct {
 	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
 }
 
+// StoryPlotChapterRef 保存剧情拆解引用章节的可跳转 ID 和标题快照。
+type StoryPlotChapterRef struct {
+	ChapterID            string `json:"chapterId"`
+	ChapterOrder         int    `json:"chapterOrder"`
+	ChapterTitleSnapshot string `json:"chapterTitleSnapshot"`
+}
+
+// StoryPlotDimension 保存剧情卡片内某个临时维度的名称、顺序和用户分析正文。
+type StoryPlotDimension struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Order   int    `json:"order"`
+	Content string `json:"content"`
+}
+
+// StoryPlotTypeSnapshot 保存某张剧情卡片自己的临时类型和维度列表，不回写模板。
+type StoryPlotTypeSnapshot struct {
+	ID         string               `json:"id"`
+	Name       string               `json:"name"`
+	Order      int                  `json:"order"`
+	Dimensions []StoryPlotDimension `json:"dimensions"`
+}
+
+// StoryPlotCard 保存用户围绕章节范围整理出的剧情拆解卡片。
+type StoryPlotCard struct {
+	ID                string                  `json:"id"`
+	BookID            string                  `json:"bookId"`
+	AnalysisKind      string                  `json:"analysisKind"`
+	Status            string                  `json:"status"`
+	Title             string                  `json:"title"`
+	Summary           string                  `json:"summary"`
+	ChapterRangeInput string                  `json:"chapterRangeInput"`
+	ChapterRefs       []StoryPlotChapterRef   `json:"chapterRefs"`
+	ParseErrors       []string                `json:"parseErrors"`
+	TemplateFileName  string                  `json:"templateFileName"`
+	TemplateName      string                  `json:"templateName"`
+	PlanTypeID        string                  `json:"planTypeId"`
+	PlanTypeName      string                  `json:"planTypeName"`
+	Dimensions        []StoryPlotDimension    `json:"dimensions"`
+	TypeSnapshots     []StoryPlotTypeSnapshot `json:"typeSnapshots"`
+	TagIDs            []string                `json:"tagIds"`
+	MaterialIDs       []string                `json:"materialIds"`
+	CreatedAt         string                  `json:"createdAt"`
+	UpdatedAt         string                  `json:"updatedAt"`
+}
+
+// StoryPlotCardCollection 对应 deconstructions/story-plot-cards.json。
+type StoryPlotCardCollection struct {
+	Version int             `json:"version"`
+	Items   []StoryPlotCard `json:"items"`
+}
+
+// StoryPlotWorkspace 返回剧情页需要的当前书、当前剧情模板和已有剧情卡片。
+type StoryPlotWorkspace struct {
+	Project                 BookProject             `json:"project"`
+	Plan                    DeconstructionPlan      `json:"plan"`
+	CurrentTemplateFileName string                  `json:"currentTemplateFileName"`
+	StoryPlotCards          StoryPlotCardCollection `json:"storyPlotCards"`
+}
+
+// SaveStoryPlotCardRequest 承载剧情弹框保存草稿或正式完成的数据。
+type SaveStoryPlotCardRequest struct {
+	BookPath          string                  `json:"bookPath"`
+	CardID            string                  `json:"cardId"`
+	Status            string                  `json:"status"`
+	Title             string                  `json:"title"`
+	Summary           string                  `json:"summary"`
+	ChapterRangeInput string                  `json:"chapterRangeInput"`
+	TemplateFileName  string                  `json:"templateFileName"`
+	TemplateName      string                  `json:"templateName"`
+	PlanTypeID        string                  `json:"planTypeId"`
+	PlanTypeName      string                  `json:"planTypeName"`
+	Dimensions        []StoryPlotDimension    `json:"dimensions"`
+	TypeSnapshots     []StoryPlotTypeSnapshot `json:"typeSnapshots"`
+	TagIDs            []string                `json:"tagIds"`
+}
+
+// SaveStoryPlotCardResult 返回保存后的剧情卡片和完整集合，便于前端刷新列表。
+type SaveStoryPlotCardResult struct {
+	Card           StoryPlotCard           `json:"card"`
+	StoryPlotCards StoryPlotCardCollection `json:"storyPlotCards"`
+}
+
+// DeleteStoryPlotCardRequest 指定要从当前书删除的剧情卡片。
+type DeleteStoryPlotCardRequest struct {
+	BookPath string `json:"bookPath"`
+	CardID   string `json:"cardId"`
+}
+
+// DeleteStoryPlotCardResult 返回删除后的剧情卡片集合。
+type DeleteStoryPlotCardResult struct {
+	StoryPlotCards StoryPlotCardCollection `json:"storyPlotCards"`
+}
+
 // MaterialChapterRef 保存素材来源章节的可跳转 ID 和标题快照。
 type MaterialChapterRef struct {
 	ChapterID            string `json:"chapterId"`

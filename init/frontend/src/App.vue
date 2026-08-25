@@ -13,6 +13,7 @@ import {
 } from '@/data/workbenchFixtures'
 import AnalysisPage from '@/modules/analysis/AnalysisPage.vue'
 import DeconstructionCardsPage from '@/modules/deconstructions/DeconstructionCardsPage.vue'
+import StoryPlotPreviewPanel from '@/modules/deconstructions/StoryPlotPreviewPanel.vue'
 import LibraryPage from '@/modules/library/LibraryPage.vue'
 import LibraryMaterialsPage from '@/modules/materials/LibraryMaterialsPage.vue'
 import MaterialsPage from '@/modules/materials/MaterialsPage.vue'
@@ -29,6 +30,8 @@ const libraryMode = ref<'list' | 'import'>('list')
 const currentBook = ref<CurrentBookSummary>({ ...defaultCurrentBook })
 const currentProject = ref<BookProject | null>(null)
 const readingSourceFocus = ref<ReadingSourceFocus | null>(null)
+const deconstructionCardsPageRef = ref<InstanceType<typeof DeconstructionCardsPage> | null>(null)
+const storyPlotPageRef = ref<InstanceType<typeof StoryPlotPreviewPanel> | null>(null)
 const materialsPageRef = ref<InstanceType<typeof MaterialsPage> | null>(null)
 const libraryMaterialsPageRef = ref<InstanceType<typeof LibraryMaterialsPage> | null>(null)
 
@@ -49,7 +52,8 @@ const activeTitle = computed(() => {
     library: '书库',
     libraryMaterials: '书库素材',
     reading: '阅读与拆解',
-    deconstructions: '写作手法拆解',
+    deconstructions: '写作手法',
+    storyPlot: '剧情',
     materials: '素材库',
     plan: '拆解方案',
     analysis: '基础分析',
@@ -146,6 +150,18 @@ function refreshMaterialsPage() {
   materialsPageRef.value?.refresh()
 }
 
+function refreshDeconstructionCardsPage() {
+  deconstructionCardsPageRef.value?.refresh()
+}
+
+function refreshStoryPlotPage() {
+  storyPlotPageRef.value?.refresh()
+}
+
+function openStoryPlotCreate() {
+  storyPlotPageRef.value?.openCreate()
+}
+
 function refreshLibraryMaterialsPage() {
   libraryMaterialsPageRef.value?.refresh()
 }
@@ -192,6 +208,28 @@ onMounted(restoreLastOpenedBook)
                 刷新
               </n-button>
             </template>
+            <template v-else-if="activeView === 'deconstructions'" #actions>
+              <n-button secondary @click="refreshDeconstructionCardsPage">
+                <template #icon>
+                  <RefreshCw :size="16" />
+                </template>
+                刷新
+              </n-button>
+            </template>
+            <template v-else-if="activeView === 'storyPlot'" #actions>
+              <n-button type="primary" secondary @click="openStoryPlotCreate">
+                <template #icon>
+                  <Plus :size="16" />
+                </template>
+                新建剧情
+              </n-button>
+              <n-button secondary @click="refreshStoryPlotPage">
+                <template #icon>
+                  <RefreshCw :size="16" />
+                </template>
+                刷新模板
+              </n-button>
+            </template>
           </AppTopbar>
 
           <n-layout-content :class="['content-shell', { 'content-shell-full': activeView === 'library' }]">
@@ -216,8 +254,14 @@ onMounted(restoreLastOpenedBook)
               />
               <DeconstructionCardsPage
                 v-else-if="activeView === 'deconstructions'"
+                ref="deconstructionCardsPageRef"
                 :project="currentProject"
                 @back-to-source="openReadingSource"
+              />
+              <StoryPlotPreviewPanel
+                v-else-if="activeView === 'storyPlot'"
+                ref="storyPlotPageRef"
+                :project="currentProject"
               />
               <MaterialsPage
                 v-else-if="activeView === 'materials'"

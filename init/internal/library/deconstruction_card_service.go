@@ -264,7 +264,7 @@ func loadDeconstructionCards(bookPath string) (DeconstructionCardCollection, err
 	return normalizeWritingTechniqueCardCollection(collection), nil
 }
 
-// ensureChapterHasNoSourceTexts 阻止拆分已有来源引用的章节，避免破坏追溯偏移。
+// ensureChapterHasNoSourceTexts 阻止拆分已有来源引用的章节，避免破坏选文偏移和剧情范围追溯。
 func ensureChapterHasNoSourceTexts(bookPath string, chapterID string) error {
 	sourceTexts, err := loadSourceTexts(bookPath)
 	if err != nil {
@@ -273,6 +273,17 @@ func ensureChapterHasNoSourceTexts(bookPath string, chapterID string) error {
 	for _, sourceText := range sourceTexts.Items {
 		if sourceText.ChapterID == chapterID {
 			return errors.New("该章节已有选文来源，暂不能直接拆分；请先确认相关拆解或素材的来源迁移")
+		}
+	}
+	storyCards, err := loadStoryPlotCards(bookPath)
+	if err != nil {
+		return err
+	}
+	for _, card := range storyCards.Items {
+		for _, chapterRef := range card.ChapterRefs {
+			if chapterRef.ChapterID == chapterID {
+				return errors.New("该章节已有剧情拆解引用，暂不能直接拆分；请先确认相关剧情范围的来源迁移")
+			}
 		}
 	}
 	return nil

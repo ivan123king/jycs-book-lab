@@ -38,6 +38,16 @@ type SourceTextCollection = booklibrary.SourceTextCollection
 type DeconstructionCard = booklibrary.DeconstructionCard
 type DeconstructionCardCollection = booklibrary.DeconstructionCardCollection
 type DeconstructionCardsWorkspace = booklibrary.DeconstructionCardsWorkspace
+type StoryPlotChapterRef = booklibrary.StoryPlotChapterRef
+type StoryPlotDimension = booklibrary.StoryPlotDimension
+type StoryPlotTypeSnapshot = booklibrary.StoryPlotTypeSnapshot
+type StoryPlotCard = booklibrary.StoryPlotCard
+type StoryPlotCardCollection = booklibrary.StoryPlotCardCollection
+type StoryPlotWorkspace = booklibrary.StoryPlotWorkspace
+type SaveStoryPlotCardRequest = booklibrary.SaveStoryPlotCardRequest
+type SaveStoryPlotCardResult = booklibrary.SaveStoryPlotCardResult
+type DeleteStoryPlotCardRequest = booklibrary.DeleteStoryPlotCardRequest
+type DeleteStoryPlotCardResult = booklibrary.DeleteStoryPlotCardResult
 type MaterialChapterRef = booklibrary.MaterialChapterRef
 type MaterialSourceSnapshot = booklibrary.MaterialSourceSnapshot
 type MaterialSourceRef = booklibrary.MaterialSourceRef
@@ -295,6 +305,33 @@ func (a *App) UpdateDeconstructionCard(request UpdateDeconstructionCardRequest) 
 // DeleteDeconstructionCard 删除当前书写作手法拆解卡片，并按需清理来源片段。
 func (a *App) DeleteDeconstructionCard(request DeleteDeconstructionCardRequest) (DeleteDeconstructionCardResult, error) {
 	return booklibrary.DeleteDeconstructionCard(request)
+}
+
+// OpenStoryPlotWorkspace 读取当前书剧情卡片和剧情模板。
+func (a *App) OpenStoryPlotWorkspace(bookPath string) (StoryPlotWorkspace, error) {
+	workspace, err := booklibrary.OpenStoryPlotWorkspace(bookPath)
+	if err != nil {
+		return StoryPlotWorkspace{}, err
+	}
+	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
+		return StoryPlotWorkspace{}, err
+	}
+	return workspace, nil
+}
+
+// CreateStoryPlotCard 保存新的剧情卡片草稿或完成卡片。
+func (a *App) CreateStoryPlotCard(request SaveStoryPlotCardRequest) (SaveStoryPlotCardResult, error) {
+	return booklibrary.CreateStoryPlotCard(request)
+}
+
+// UpdateStoryPlotCard 更新已有剧情卡片。
+func (a *App) UpdateStoryPlotCard(request SaveStoryPlotCardRequest) (SaveStoryPlotCardResult, error) {
+	return booklibrary.UpdateStoryPlotCard(request)
+}
+
+// DeleteStoryPlotCard 删除当前书剧情卡片。
+func (a *App) DeleteStoryPlotCard(request DeleteStoryPlotCardRequest) (DeleteStoryPlotCardResult, error) {
+	return booklibrary.DeleteStoryPlotCard(request)
 }
 
 // OpenMaterialWorkspace 读取当前书小说内素材和来源上下文。

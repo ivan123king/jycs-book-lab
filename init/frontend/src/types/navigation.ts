@@ -9,6 +9,7 @@ export type ViewKey =
   | 'libraryMaterials'
   | 'reading'
   | 'deconstructions'
+  | 'storyPlot'
   | 'materials'
   | 'plan'
   | 'analysis'

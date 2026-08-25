@@ -463,25 +463,14 @@ watch(selectedCard, syncDetailEditor)
 watch(editPlanTypeId, () => {
   syncEditDimension(editDimensionId.value)
 })
+
+defineExpose({
+  refresh: loadWorkspace,
+})
 </script>
 
 <template>
   <section class="page-section">
-    <div class="section-heading">
-      <div>
-        <h1>写作手法拆解</h1>
-        <p>管理当前小说从原文选段沉淀出的写作手法卡片，并保留来源追溯。</p>
-      </div>
-      <n-space>
-        <n-button @click="loadWorkspace">
-          <template #icon>
-            <Search :size="16" />
-          </template>
-          刷新
-        </n-button>
-      </n-space>
-    </div>
-
     <n-alert v-if="!activeBookPath" type="info">
       请先从书库打开一本小说。写作手法拆解卡片会保存在该小说项目目录中。
     </n-alert>

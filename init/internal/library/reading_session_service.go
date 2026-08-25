@@ -109,6 +109,11 @@ func ensureReadingSupportFiles(bookPath string, project BookProject) error {
 			}
 		}
 	}
+	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(storyPlotCardsRelativePath))); errors.Is(err, os.ErrNotExist) {
+		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(storyPlotCardsRelativePath)), StoryPlotCardCollection{Version: 1, Items: []StoryPlotCard{}}); err != nil {
+			return err
+		}
+	}
 	if _, err := os.Stat(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath))); errors.Is(err, os.ErrNotExist) {
 		if err := writeJSONFileAtomic(filepath.Join(bookPath, filepath.FromSlash(chapterMemosRelativePath)), ChapterMemoCollection{Version: 1, Items: []ChapterMemo{}}); err != nil {
 			return err

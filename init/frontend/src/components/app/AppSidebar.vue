@@ -8,6 +8,7 @@ import {
   BookMarked,
   BookOpenText,
   Bookmark,
+  GitBranch,
   Highlighter,
   Library,
   ListChecks,
@@ -40,7 +41,8 @@ const navOptions: MenuOption[] = [
     key: 'workspace',
     children: [
       { label: '阅读', key: 'reading', icon: renderMenuIcon(BookOpenText) },
-      { label: '拆解', key: 'deconstructions', icon: renderMenuIcon(Highlighter) },
+      { label: '写作手法', key: 'deconstructions', icon: renderMenuIcon(Highlighter) },
+      { label: '剧情', key: 'storyPlot', icon: renderMenuIcon(GitBranch) },
       { label: '素材', key: 'materials', icon: renderMenuIcon(Bookmark) },
       { label: '方案', key: 'plan', icon: renderMenuIcon(ListChecks) },
       { label: '分析', key: 'analysis', icon: renderMenuIcon(BarChart3) },

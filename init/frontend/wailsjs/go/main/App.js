@@ -26,6 +26,10 @@ export function CreateMaterialFromCard(arg1) {
   return window['go']['main']['App']['CreateMaterialFromCard'](arg1);
 }
 
+export function CreateStoryPlotCard(arg1) {
+  return window['go']['main']['App']['CreateStoryPlotCard'](arg1);
+}
+
 export function DeleteDeconstructionCard(arg1) {
   return window['go']['main']['App']['DeleteDeconstructionCard'](arg1);
 }
@@ -36,6 +40,10 @@ export function DeleteLibraryMaterial(arg1) {
 
 export function DeleteMaterial(arg1) {
   return window['go']['main']['App']['DeleteMaterial'](arg1);
+}
+
+export function DeleteStoryPlotCard(arg1) {
+  return window['go']['main']['App']['DeleteStoryPlotCard'](arg1);
 }
 
 export function GetChapterContent(arg1) {
@@ -80,6 +88,10 @@ export function OpenMaterialWorkspace(arg1) {
 
 export function OpenReadingSession(arg1) {
   return window['go']['main']['App']['OpenReadingSession'](arg1);
+}
+
+export function OpenStoryPlotWorkspace(arg1) {
+  return window['go']['main']['App']['OpenStoryPlotWorkspace'](arg1);
 }
 
 export function PreviewNovelImport() {
@@ -136,4 +148,8 @@ export function UpdateLibraryMaterial(arg1) {
 
 export function UpdateMaterial(arg1) {
   return window['go']['main']['App']['UpdateMaterial'](arg1);
+}
+
+export function UpdateStoryPlotCard(arg1) {
+  return window['go']['main']['App']['UpdateStoryPlotCard'](arg1);
 }

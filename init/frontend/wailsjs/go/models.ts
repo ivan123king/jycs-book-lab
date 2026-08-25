@@ -1153,6 +1153,218 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class DeleteStoryPlotCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteStoryPlotCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	    }
+	}
+	export class StoryPlotTypeSnapshot {
+	    id: string;
+	    name: string;
+	    order: number;
+	    dimensions: StoryPlotDimension[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotTypeSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.order = source["order"];
+	        this.dimensions = this.convertValues(source["dimensions"], StoryPlotDimension);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryPlotDimension {
+	    id: string;
+	    name: string;
+	    order: number;
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotDimension(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.order = source["order"];
+	        this.content = source["content"];
+	    }
+	}
+	export class StoryPlotChapterRef {
+	    chapterId: string;
+	    chapterOrder: number;
+	    chapterTitleSnapshot: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotChapterRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapterId = source["chapterId"];
+	        this.chapterOrder = source["chapterOrder"];
+	        this.chapterTitleSnapshot = source["chapterTitleSnapshot"];
+	    }
+	}
+	export class StoryPlotCard {
+	    id: string;
+	    bookId: string;
+	    analysisKind: string;
+	    status: string;
+	    title: string;
+	    summary: string;
+	    chapterRangeInput: string;
+	    chapterRefs: StoryPlotChapterRef[];
+	    parseErrors: string[];
+	    templateFileName: string;
+	    templateName: string;
+	    planTypeId: string;
+	    planTypeName: string;
+	    dimensions: StoryPlotDimension[];
+	    typeSnapshots: StoryPlotTypeSnapshot[];
+	    tagIds: string[];
+	    materialIds: string[];
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotCard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.bookId = source["bookId"];
+	        this.analysisKind = source["analysisKind"];
+	        this.status = source["status"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.chapterRangeInput = source["chapterRangeInput"];
+	        this.chapterRefs = this.convertValues(source["chapterRefs"], StoryPlotChapterRef);
+	        this.parseErrors = source["parseErrors"];
+	        this.templateFileName = source["templateFileName"];
+	        this.templateName = source["templateName"];
+	        this.planTypeId = source["planTypeId"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensions = this.convertValues(source["dimensions"], StoryPlotDimension);
+	        this.typeSnapshots = this.convertValues(source["typeSnapshots"], StoryPlotTypeSnapshot);
+	        this.tagIds = source["tagIds"];
+	        this.materialIds = source["materialIds"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryPlotCardCollection {
+	    version: number;
+	    items: StoryPlotCard[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotCardCollection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.items = this.convertValues(source["items"], StoryPlotCard);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DeleteStoryPlotCardResult {
+	    storyPlotCards: StoryPlotCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteStoryPlotCardResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.storyPlotCards = this.convertValues(source["storyPlotCards"], StoryPlotCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ImportChapterPreview {
 	    id: string;
 	    order: number;
@@ -1844,6 +2056,92 @@ export namespace library {
 	        this.fontSize = source["fontSize"];
 	    }
 	}
+	export class SaveStoryPlotCardRequest {
+	    bookPath: string;
+	    cardId: string;
+	    status: string;
+	    title: string;
+	    summary: string;
+	    chapterRangeInput: string;
+	    templateFileName: string;
+	    templateName: string;
+	    planTypeId: string;
+	    planTypeName: string;
+	    dimensions: StoryPlotDimension[];
+	    typeSnapshots: StoryPlotTypeSnapshot[];
+	    tagIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveStoryPlotCardRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bookPath = source["bookPath"];
+	        this.cardId = source["cardId"];
+	        this.status = source["status"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.chapterRangeInput = source["chapterRangeInput"];
+	        this.templateFileName = source["templateFileName"];
+	        this.templateName = source["templateName"];
+	        this.planTypeId = source["planTypeId"];
+	        this.planTypeName = source["planTypeName"];
+	        this.dimensions = this.convertValues(source["dimensions"], StoryPlotDimension);
+	        this.typeSnapshots = this.convertValues(source["typeSnapshots"], StoryPlotTypeSnapshot);
+	        this.tagIds = source["tagIds"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SaveStoryPlotCardResult {
+	    card: StoryPlotCard;
+	    storyPlotCards: StoryPlotCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveStoryPlotCardResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.card = this.convertValues(source["card"], StoryPlotCard);
+	        this.storyPlotCards = this.convertValues(source["storyPlotCards"], StoryPlotCardCollection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SetCurrentDeconstructionTemplateRequest {
 	    bookPath: string;
 	    analysisKind: string;
@@ -1901,6 +2199,47 @@ export namespace library {
 	        this.remainingChapter = this.convertValues(source["remainingChapter"], BookChapter);
 	        this.newContent = source["newContent"];
 	        this.remainingContent = source["remainingContent"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	
+	export class StoryPlotWorkspace {
+	    project: BookProject;
+	    plan: DeconstructionPlan;
+	    currentTemplateFileName: string;
+	    storyPlotCards: StoryPlotCardCollection;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryPlotWorkspace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], BookProject);
+	        this.plan = this.convertValues(source["plan"], DeconstructionPlan);
+	        this.currentTemplateFileName = source["currentTemplateFileName"];
+	        this.storyPlotCards = this.convertValues(source["storyPlotCards"], StoryPlotCardCollection);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

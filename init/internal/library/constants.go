@@ -12,6 +12,7 @@ const (
 	chapterMemosRelativePath        = "reading/chapter-memos.json"
 	sourceTextsRelativePath         = "source-texts/source-texts.json"
 	deconstructionCardsRelativePath = "deconstructions/writing-technique-cards.json"
+	storyPlotCardsRelativePath      = "deconstructions/story-plot-cards.json"
 	legacyDeconstructionCardsPath   = "deconstructions/deconstruction-cards.json"
 	materialsRelativePath           = "materials/materials.json"
 	materialTextsDir                = "materials/texts"
