@@ -85,6 +85,8 @@ type WritingTechniqueTypeDraft = {
 
 const catalogPageSize = 30
 const defaultReaderFontSize = 18
+const readingSummaryEmitDelay = 250
+const readingPositionSaveDelay = 1000
 const tabIndentSpaces = '    '
 const readerMode = ref<ReaderMode>('read')
 const session = ref<library.ReadingSession | null>(null)
@@ -136,6 +138,10 @@ const readerScrollRef = ref<HTMLElement | null>(null)
 const readerContentRef = ref<HTMLElement | null>(null)
 const restoringScroll = ref(false)
 const scrollSaveTimer = ref<number | null>(null)
+const readingSummaryEmitTimer = ref<number | null>(null)
+const lastEmittedReadingSummary = ref('')
+const positionSaveInFlight = ref(false)
+const pendingPositionSave = ref(false)
 const writingTechniqueDraftSerial = ref(0)
 
 const chapters = computed(() => session.value?.project.chapters ?? [])
@@ -151,24 +157,42 @@ const readingProgressText = computed(() => {
   return `${currentChapter.value.title} · ${overallReadingPercent.value}%`
 })
 
+// 阅读进度基础数据只在章节列表或当前章节变化时重算，避免滚动时反复遍历整本目录。
+const readingProgressBase = computed(() => {
+  const current = currentChapter.value
+  const base = {
+    totalWordCount: 0,
+    completedBeforeCurrent: 0,
+    currentChapterWordCount: 0,
+  }
+  if (!current) {
+    return base
+  }
+  for (const chapter of chapters.value) {
+    const chapterWordCount = Math.max(0, chapter.wordCount)
+    base.totalWordCount += chapterWordCount
+    if (chapter.id === current.id) {
+      base.currentChapterWordCount = chapterWordCount
+      continue
+    }
+    if (chapter.order < current.order) {
+      base.completedBeforeCurrent += chapterWordCount
+    }
+  }
+  return base
+})
+
 const overallReadingPercent = computed(() => {
-  if (!currentChapter.value || chapters.value.length === 0) {
+  if (!currentChapter.value) {
     return 0
   }
-  const totalWordCount = chapters.value.reduce((sum, chapter) => sum + Math.max(0, chapter.wordCount), 0)
+  const { totalWordCount, completedBeforeCurrent, currentChapterWordCount } = readingProgressBase.value
   if (totalWordCount <= 0) {
     return 0
   }
   const visibleEnd = Math.min(chapterContent.value.length, currentCharOffset.value)
-  const completedWordCount = chapters.value.reduce((sum, chapter) => {
-    if (chapter.id === currentChapter.value?.id) {
-      return sum + Math.min(Math.max(chapter.wordCount, chapterContent.value.length), visibleEnd)
-    }
-    if (chapter.order < (currentChapter.value?.order ?? 0)) {
-      return sum + Math.max(0, chapter.wordCount)
-    }
-    return sum
-  }, 0)
+  const currentCompleted = Math.min(Math.max(currentChapterWordCount, chapterContent.value.length), visibleEnd)
+  const completedWordCount = completedBeforeCurrent + currentCompleted
   return clampPercent(Math.round((completedWordCount / totalWordCount) * 100))
 })
 
@@ -375,24 +399,39 @@ async function persistReadingPosition() {
   if (!bookPath || !currentChapter.value) {
     return
   }
+  if (positionSaveInFlight.value) {
+    pendingPositionSave.value = true
+    return
+  }
+  positionSaveInFlight.value = true
   savingPosition.value = true
   try {
-    const state = await SaveReadingPosition({
-      bookPath,
-      chapterId: currentChapter.value.id,
-      charOffset: currentCharOffset.value,
-      paragraphIndex: estimateParagraphIndex(chapterContent.value, currentCharOffset.value),
-      renderedPageNumber: 1,
-      lastMode: readerMode.value,
-      readingProgressPercent: overallReadingPercent.value,
-    })
-    if (session.value) {
-      session.value.state = state
-      readerFontSize.value = normalizeFontSize(state.preferences?.fontSize)
-    }
+    do {
+      pendingPositionSave.value = false
+      const activeChapter = currentChapter.value
+      const activeBook = activeBookPath.value
+      if (!activeBook || !activeChapter) {
+        break
+      }
+      const state = await SaveReadingPosition({
+        bookPath: activeBook,
+        chapterId: activeChapter.id,
+        charOffset: currentCharOffset.value,
+        paragraphIndex: estimateParagraphIndex(chapterContent.value, currentCharOffset.value),
+        renderedPageNumber: 1,
+        lastMode: readerMode.value,
+        readingProgressPercent: overallReadingPercent.value,
+      })
+      if (session.value) {
+        session.value.state = state
+        readerFontSize.value = normalizeFontSize(state.preferences?.fontSize)
+      }
+    } while (pendingPositionSave.value)
   } catch (error) {
     readingError.value = getErrorMessage(error)
   } finally {
+    positionSaveInFlight.value = false
+    pendingPositionSave.value = false
     savingPosition.value = false
   }
 }
@@ -976,7 +1015,7 @@ function schedulePersistReadingPosition() {
   scrollSaveTimer.value = window.setTimeout(() => {
     scrollSaveTimer.value = null
     void persistReadingPosition()
-  }, 500)
+  }, readingPositionSaveDelay)
 }
 
 async function restoreScrollPosition() {
@@ -1009,8 +1048,20 @@ function normalizeFontSize(value?: number) {
 }
 
 function estimateParagraphIndex(content: string, offset: number) {
-  const before = content.slice(0, Math.max(0, offset))
-  return before.split(/\n\s*\n/).length - 1
+  const safeOffset = Math.min(content.length, Math.max(0, offset))
+  if (safeOffset <= 0) {
+    return 0
+  }
+  let paragraphIndex = 0
+  const paragraphBreakPattern = /\n\s*\n/g
+  let match = paragraphBreakPattern.exec(content)
+  while (match && match.index < safeOffset) {
+    if (paragraphBreakPattern.lastIndex <= safeOffset) {
+      paragraphIndex += 1
+    }
+    match = paragraphBreakPattern.exec(content)
+  }
+  return paragraphIndex
 }
 
 function splitTags(value: string) {
@@ -1043,8 +1094,23 @@ function hasChapterMemo(chapterId: string) {
 }
 
 function emitReadingSummary() {
+  if (readingSummaryEmitTimer.value !== null) {
+    return
+  }
+  readingSummaryEmitTimer.value = window.setTimeout(() => {
+    readingSummaryEmitTimer.value = null
+    flushReadingSummary()
+  }, readingSummaryEmitDelay)
+}
+
+function flushReadingSummary() {
   nextTick(() => {
-    emit('readingUpdated', readingProgressText.value)
+    const summary = readingProgressText.value
+    if (summary === lastEmittedReadingSummary.value) {
+      return
+    }
+    lastEmittedReadingSummary.value = summary
+    emit('readingUpdated', summary)
   })
 }
 
@@ -1088,6 +1154,11 @@ onBeforeUnmount(() => {
     window.clearTimeout(scrollSaveTimer.value)
     scrollSaveTimer.value = null
   }
+  if (readingSummaryEmitTimer.value !== null) {
+    window.clearTimeout(readingSummaryEmitTimer.value)
+    readingSummaryEmitTimer.value = null
+  }
+  flushReadingSummary()
   void persistReadingPosition()
 })
 </script>
