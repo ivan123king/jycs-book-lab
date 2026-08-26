@@ -79,6 +79,55 @@ func hasImportStage(diagnostics ImportDiagnostics, stageName string) bool {
 	return false
 }
 
+// TestLibraryIndexOrdersRecentBooksFirst 覆盖新导入和打开书籍都会移动到书库列表最前。
+func TestLibraryIndexOrdersRecentBooksFirst(t *testing.T) {
+	libraryPath := t.TempDir()
+	sourceDir := t.TempDir()
+	firstSourcePath := filepath.Join(sourceDir, "第一本.txt")
+	secondSourcePath := filepath.Join(sourceDir, "第二本.txt")
+	if err := os.WriteFile(firstSourcePath, []byte("第一章 开始\n第一本正文。\n"), 0o644); err != nil {
+		t.Fatalf("写入第一本测试小说失败: %v", err)
+	}
+	if err := os.WriteFile(secondSourcePath, []byte("第一章 开始\n第二本正文。\n"), 0o644); err != nil {
+		t.Fatalf("写入第二本测试小说失败: %v", err)
+	}
+
+	firstResult, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-recent-first",
+		SourcePath: firstSourcePath,
+		BookName:   "第一本",
+	})
+	if err != nil {
+		t.Fatalf("导入第一本失败: %v", err)
+	}
+	secondResult, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-recent-second",
+		SourcePath: secondSourcePath,
+		BookName:   "第二本",
+	})
+	if err != nil {
+		t.Fatalf("导入第二本失败: %v", err)
+	}
+	if len(secondResult.Library.Index.Books) != 2 || secondResult.Library.Index.Books[0].BookName != "第二本" {
+		t.Fatalf("后导入书籍未排在最前: %+v", secondResult.Library.Index.Books)
+	}
+
+	index, err := PromoteBookInLibrary(libraryPath, firstResult.Project.Book.BookPath)
+	if err != nil {
+		t.Fatalf("前移打开书籍失败: %v", err)
+	}
+	if len(index.Books) != 2 || index.Books[0].BookName != "第一本" || index.Books[1].BookName != "第二本" {
+		t.Fatalf("打开书籍未排在最前: %+v", index.Books)
+	}
+	reloaded, err := ensureLibraryIndex(libraryPath)
+	if err != nil {
+		t.Fatalf("重新读取书库索引失败: %v", err)
+	}
+	if len(reloaded.Books) != 2 || reloaded.Books[0].BookPath != firstResult.Project.Book.BookPath {
+		t.Fatalf("书库索引未持久化最近打开顺序: %+v", reloaded.Books)
+	}
+}
+
 // TestRemoveBookFromLibraryDeletesProjectData 覆盖书库移除会删除单书项目目录并刷新轻量索引。
 func TestRemoveBookFromLibraryDeletesProjectData(t *testing.T) {
 	libraryPath := t.TempDir()

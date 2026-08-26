@@ -233,9 +233,28 @@ async function openBook(book: LibraryBookEntry) {
   libraryError.value = ''
   try {
     const project = await OpenBookProject(book.bookPath)
+    promoteLibraryBookInView(book.bookPath)
     emit('openBook', project)
   } catch (error) {
     libraryError.value = getErrorMessage(error)
+  }
+}
+
+function promoteLibraryBookInView(bookPath: string) {
+  if (!libraryState.value) {
+    return
+  }
+  const books = libraryState.value.index.books ?? []
+  const target = books.find((book) => book.bookPath === bookPath)
+  if (!target) {
+    return
+  }
+  libraryState.value = {
+    ...libraryState.value,
+    index: {
+      ...libraryState.value.index,
+      books: [target, ...books.filter((book) => book.bookPath !== bookPath)],
+    },
   }
 }
 
@@ -268,6 +287,13 @@ function resetImportDraft() {
   importDraft.value = null
   importForm.value = { bookName: '', description: '' }
   importChapterPage.value = 1
+}
+
+function cancelImport() {
+  resetImportDraft()
+  importError.value = ''
+  importSuccess.value = ''
+  libraryMode.value = 'list'
 }
 
 onMounted(loadLibrary)
@@ -314,7 +340,7 @@ onMounted(loadLibrary)
         <p>导入只展示小说信息、导入信息和分页章节标题。</p>
       </div>
       <n-space>
-        <n-button @click="libraryMode = 'list'">返回书库</n-button>
+        <n-button @click="cancelImport">返回书库</n-button>
       </n-space>
     </div>
 
@@ -515,7 +541,7 @@ onMounted(loadLibrary)
         </n-card>
 
         <n-space justify="end" class="card-actions">
-          <n-button @click="libraryMode = 'list'">取消</n-button>
+          <n-button @click="cancelImport">取消</n-button>
           <n-button :loading="importLoading" @click="chooseImportFile">
             <template #icon>
               <FileInput :size="16" />

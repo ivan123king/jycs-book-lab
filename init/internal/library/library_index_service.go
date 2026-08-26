@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -117,32 +116,59 @@ func ensureLibraryIndex(libraryPath string) (LibraryIndex, error) {
 	return index, nil
 }
 
-// appendBookToIndex 将导入后的小说入口写入书库轻量索引。
+// appendBookToIndex 将导入后的小说入口写入书库轻量索引；最近导入的书排在最前。
 func appendBookToIndex(libraryPath string, entry LibraryBookEntry) (LibraryIndex, error) {
 	index, err := ensureLibraryIndex(libraryPath)
 	if err != nil {
 		return LibraryIndex{}, err
 	}
 
-	replaced := false
-	for i := range index.Books {
-		if filepath.Clean(index.Books[i].BookPath) == filepath.Clean(entry.BookPath) {
-			index.Books[i] = entry
-			replaced = true
-			break
-		}
-	}
-	if !replaced {
-		index.Books = append(index.Books, entry)
-	}
-	sort.SliceStable(index.Books, func(i, j int) bool {
-		return strings.ToLower(index.Books[i].BookName) < strings.ToLower(index.Books[j].BookName)
-	})
+	index.Books = moveLibraryEntryToFront(index.Books, entry)
 
 	if err := writeJSONFileAtomic(filepath.Join(libraryPath, libraryIndexName), index); err != nil {
 		return LibraryIndex{}, err
 	}
 	return index, nil
+}
+
+// PromoteBookInLibrary 将已打开的书移动到书库列表最前，方便几百本书时快速回到最近使用项。
+func PromoteBookInLibrary(libraryPath string, bookPath string) (LibraryIndex, error) {
+	libraryPath = filepath.Clean(strings.TrimSpace(libraryPath))
+	if libraryPath == "." || libraryPath == "" {
+		return LibraryIndex{}, errors.New("书库目录不能为空")
+	}
+	bookPath = filepath.Clean(strings.TrimSpace(bookPath))
+	if bookPath == "." || bookPath == "" {
+		return LibraryIndex{}, errors.New("小说目录不能为空")
+	}
+
+	index, err := ensureLibraryIndex(libraryPath)
+	if err != nil {
+		return LibraryIndex{}, err
+	}
+	for _, entry := range index.Books {
+		if samePath(entry.BookPath, bookPath) {
+			index.Books = moveLibraryEntryToFront(index.Books, entry)
+			if err := writeJSONFileAtomic(filepath.Join(libraryPath, libraryIndexName), index); err != nil {
+				return LibraryIndex{}, err
+			}
+			return index, nil
+		}
+	}
+	return index, nil
+}
+
+// moveLibraryEntryToFront 在保持其他书籍相对顺序不变的前提下，把目标入口移到第一位。
+func moveLibraryEntryToFront(books []LibraryBookEntry, entry LibraryBookEntry) []LibraryBookEntry {
+	nextBooks := make([]LibraryBookEntry, 0, len(books)+1)
+	nextBooks = append(nextBooks, entry)
+	for _, book := range books {
+		if samePath(book.BookPath, entry.BookPath) {
+			continue
+		}
+		nextBooks = append(nextBooks, book)
+	}
+	return nextBooks
 }
 
 // RemoveBookFromLibrary 从书库 index.json 移除入口，并删除该书在 books 目录下的完整项目数据。

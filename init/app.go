@@ -210,6 +210,11 @@ func (a *App) OpenBookProject(bookPath string) (BookProject, error) {
 	if err != nil {
 		return BookProject{}, err
 	}
+	if state, err := booklibrary.LoadLibraryState(); err == nil && state.LibraryPath != "" {
+		if _, err := booklibrary.PromoteBookInLibrary(state.LibraryPath, bookPath); err != nil {
+			return BookProject{}, err
+		}
+	}
 	if err := booklibrary.RememberLastOpenedBookPath(bookPath); err != nil {
 		return BookProject{}, err
 	}
