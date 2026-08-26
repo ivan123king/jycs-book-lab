@@ -543,6 +543,50 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if len(workspace.DeconstructionCards.Items) != 1 || len(workspace.SourceTexts.Items) != 1 {
 		t.Fatalf("写作手法拆解工作区数据不正确: %+v / %+v", workspace.DeconstructionCards.Items, workspace.SourceTexts.Items)
 	}
+	customCreated, err := CreateDeconstructionCard(CreateDeconstructionRequest{
+		BookPath: bookPath,
+		Selection: SourceSelection{
+			ChapterID:    "chapter-000002",
+			ChapterOrder: 2,
+			StartOffset:  0,
+			EndOffset:    6,
+			SelectedText: "她把信收进外套",
+		},
+		PlanTypeID:    "custom-narration",
+		PlanTypeName:  "叙事视角",
+		DimensionID:   "voice-distance",
+		DimensionName: "视角距离",
+		Content:       "临时记录这一段的叙述距离。",
+	})
+	if err != nil {
+		t.Fatalf("创建模板外写作手法拆解失败: %v", err)
+	}
+	if len(customCreated.SourceTexts.Items) != 1 || len(customCreated.DeconstructionCards.Items) != 2 ||
+		customCreated.Card.PlanTypeName != "叙事视角" || customCreated.Card.DimensionName != "视角距离" {
+		t.Fatalf("模板外类型维度未复用来源或保存快照: %+v", customCreated)
+	}
+	customUpdated, err := UpdateDeconstructionCard(UpdateDeconstructionCardRequest{
+		BookPath:      bookPath,
+		CardID:        customCreated.Card.ID,
+		PlanTypeID:    "custom-viewpoint",
+		PlanTypeName:  "叙述视角",
+		DimensionID:   "focus-shift",
+		DimensionName: "焦点转换",
+		Content:       "把临时维度改成更准确的视角焦点。",
+	})
+	if err != nil {
+		t.Fatalf("更新模板外写作手法拆解失败: %v", err)
+	}
+	if customUpdated.Card.PlanTypeName != "叙述视角" || customUpdated.Card.DimensionName != "焦点转换" {
+		t.Fatalf("模板外类型维度更新未保存名称快照: %+v", customUpdated.Card)
+	}
+	deletedCustom, err := DeleteDeconstructionCard(DeleteDeconstructionCardRequest{BookPath: bookPath, CardID: customCreated.Card.ID})
+	if err != nil {
+		t.Fatalf("删除模板外写作手法拆解失败: %v", err)
+	}
+	if len(deletedCustom.DeconstructionCards.Items) != 1 || len(deletedCustom.SourceTexts.Items) != 1 {
+		t.Fatalf("删除模板外卡片不应清理仍被引用的选文: %+v", deletedCustom)
+	}
 	updatedCard, err := UpdateDeconstructionCard(UpdateDeconstructionCardRequest{
 		BookPath:    bookPath,
 		CardID:      created.Card.ID,

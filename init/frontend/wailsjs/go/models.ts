@@ -356,7 +356,9 @@ export namespace library {
 	    bookPath: string;
 	    selection: SourceSelection;
 	    planTypeId: string;
+	    planTypeName: string;
 	    dimensionId: string;
+	    dimensionName: string;
 	    content: string;
 	    fieldValues: Record<string, string>;
 	    tagIds: string[];
@@ -370,7 +372,9 @@ export namespace library {
 	        this.bookPath = source["bookPath"];
 	        this.selection = this.convertValues(source["selection"], SourceSelection);
 	        this.planTypeId = source["planTypeId"];
+	        this.planTypeName = source["planTypeName"];
 	        this.dimensionId = source["dimensionId"];
+	        this.dimensionName = source["dimensionName"];
 	        this.content = source["content"];
 	        this.fieldValues = source["fieldValues"];
 	        this.tagIds = source["tagIds"];
@@ -2264,7 +2268,9 @@ export namespace library {
 	    bookPath: string;
 	    cardId: string;
 	    planTypeId: string;
+	    planTypeName: string;
 	    dimensionId: string;
+	    dimensionName: string;
 	    content: string;
 	    tagIds: string[];
 	
@@ -2277,7 +2283,9 @@ export namespace library {
 	        this.bookPath = source["bookPath"];
 	        this.cardId = source["cardId"];
 	        this.planTypeId = source["planTypeId"];
+	        this.planTypeName = source["planTypeName"];
 	        this.dimensionId = source["dimensionId"];
+	        this.dimensionName = source["dimensionName"];
 	        this.content = source["content"];
 	        this.tagIds = source["tagIds"];
 	    }

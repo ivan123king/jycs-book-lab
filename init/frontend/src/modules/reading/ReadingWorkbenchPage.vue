@@ -19,7 +19,20 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Highlighter, List, RotateCcw, Save, StickyNote, Type } from 'lucide-vue-next'
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Highlighter,
+  List,
+  Plus,
+  RotateCcw,
+  Save,
+  StickyNote,
+  Trash2,
+  Type,
+} from 'lucide-vue-next'
 import {
   CreateDeconstructionCard,
   GetChapterContent,
@@ -58,6 +71,17 @@ type CapturedSelection = {
   endOffset: number
   selectedText: string
 }
+type WritingTechniqueDimensionDraft = {
+  id: string
+  name: string
+  order: number
+}
+type WritingTechniqueTypeDraft = {
+  id: string
+  name: string
+  order: number
+  dimensions: WritingTechniqueDimensionDraft[]
+}
 
 const catalogPageSize = 30
 const defaultReaderFontSize = 18
@@ -95,6 +119,7 @@ const chapterMemoError = ref('')
 const chapterMemoNotice = ref('')
 const chapterMemoTarget = ref<library.BookChapter | null>(null)
 const chapterMemoContent = ref('')
+const writingTechniqueTypes = ref<WritingTechniqueTypeDraft[]>([])
 const selectedPlanTypeId = ref('')
 const selectedDimensionId = ref('')
 const deconstructionContent = ref('')
@@ -111,6 +136,7 @@ const readerScrollRef = ref<HTMLElement | null>(null)
 const readerContentRef = ref<HTMLElement | null>(null)
 const restoringScroll = ref(false)
 const scrollSaveTimer = ref<number | null>(null)
+const writingTechniqueDraftSerial = ref(0)
 
 const chapters = computed(() => session.value?.project.chapters ?? [])
 
@@ -147,7 +173,7 @@ const overallReadingPercent = computed(() => {
 })
 
 const selectedPlanType = computed(() => {
-  const types = session.value?.plan.types ?? []
+  const types = writingTechniqueTypes.value
   return types.find((item) => item.id === selectedPlanTypeId.value) ?? types[0] ?? null
 })
 
@@ -157,7 +183,7 @@ const selectedDimension = computed(() => {
 })
 
 const planTypeOptions = computed(() =>
-  (session.value?.plan.types ?? []).map((type) => ({
+  writingTechniqueTypes.value.map((type) => ({
     label: type.name,
     value: type.id,
   })),
@@ -284,8 +310,7 @@ async function loadReadingSession() {
     chapterContent.value = loaded.chapterContent
     currentCharOffset.value = clampCharOffset(loaded.state.lastPosition.charOffset)
     readerFontSize.value = normalizeFontSize(loaded.state.preferences?.fontSize)
-    selectedPlanTypeId.value = loaded.plan.types[0]?.id ?? ''
-    syncSelectedDimension()
+    resetWritingTechniqueDraftTypes()
     syncEditor()
     await restoreScrollPosition()
     emitReadingSummary()
@@ -603,8 +628,7 @@ function openDeconstructionDialog() {
   cardError.value = ''
   deconstructionContent.value = ''
   tagInput.value = ''
-  selectedPlanTypeId.value = selectedPlanTypeId.value || session.value?.plan.types[0]?.id || ''
-  syncSelectedDimension()
+  resetWritingTechniqueDraftTypes()
   deconstructionOpen.value = true
 }
 
@@ -617,6 +641,14 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
     cardError.value = '请填写你的拆解看法。'
     return
   }
+  if (!selectedPlanType.value.name.trim()) {
+    cardError.value = '请填写拆解类型名称。'
+    return
+  }
+  if (!selectedDimension.value.name.trim()) {
+    cardError.value = '请填写拆解维度名称。'
+    return
+  }
   savingCard.value = true
   cardError.value = ''
   try {
@@ -624,7 +656,9 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
       bookPath,
       selection: selectedSource.value,
       planTypeId: selectedPlanType.value.id,
+      planTypeName: selectedPlanType.value.name,
       dimensionId: selectedDimension.value.id,
+      dimensionName: selectedDimension.value.name,
       content: deconstructionContent.value,
       fieldValues: {},
       tagIds: splitTags(tagInput.value),
@@ -752,6 +786,94 @@ function syncEditor() {
 
 function syncSelectedDimension() {
   selectedDimensionId.value = selectedPlanType.value?.dimensions[0]?.id ?? ''
+}
+
+// resetWritingTechniqueDraftTypes 把当前模板克隆为本次弹框草稿，临时增删改不写回模板文件。
+function resetWritingTechniqueDraftTypes() {
+  const planTypes = session.value?.plan.types ?? []
+  const clonedTypes = planTypes.map((type, typeIndex) => ({
+    id: type.id || nextWritingTechniqueDraftId('writing-type'),
+    name: type.name || `写作类型 ${typeIndex + 1}`,
+    order: type.order || typeIndex + 1,
+    dimensions: (type.dimensions?.length ? type.dimensions : [{ id: '', name: '通用分析', order: 1 }]).map(
+      (dimension, dimensionIndex) => ({
+        id: dimension.id || nextWritingTechniqueDraftId('writing-dimension'),
+        name: dimension.name || `写作维度 ${dimensionIndex + 1}`,
+        order: dimension.order || dimensionIndex + 1,
+      }),
+    ),
+  }))
+  writingTechniqueTypes.value = clonedTypes.length ? clonedTypes : [createWritingTechniqueTypeDraft('写作手法', 1)]
+  selectedPlanTypeId.value = writingTechniqueTypes.value[0]?.id ?? ''
+  syncSelectedDimension()
+}
+
+function addWritingTechniqueType() {
+  const nextType = createWritingTechniqueTypeDraft(`写作类型 ${writingTechniqueTypes.value.length + 1}`, writingTechniqueTypes.value.length + 1)
+  writingTechniqueTypes.value = [...writingTechniqueTypes.value, nextType]
+  selectedPlanTypeId.value = nextType.id
+  syncSelectedDimension()
+}
+
+function removeWritingTechniqueType(typeId: string) {
+  if (writingTechniqueTypes.value.length <= 1) {
+    cardError.value = '写作手法拆解至少需要保留一个类型。'
+    return
+  }
+  writingTechniqueTypes.value = writingTechniqueTypes.value
+    .filter((type) => type.id !== typeId)
+    .map((type, index) => ({ ...type, order: index + 1 }))
+  if (selectedPlanTypeId.value === typeId) {
+    selectedPlanTypeId.value = writingTechniqueTypes.value[0]?.id ?? ''
+    syncSelectedDimension()
+  }
+}
+
+function addWritingTechniqueDimension() {
+  if (!selectedPlanType.value) {
+    return
+  }
+  const nextDimension = createWritingTechniqueDimensionDraft(
+    `写作维度 ${selectedPlanType.value.dimensions.length + 1}`,
+    selectedPlanType.value.dimensions.length + 1,
+  )
+  selectedPlanType.value.dimensions = [...selectedPlanType.value.dimensions, nextDimension]
+  selectedDimensionId.value = nextDimension.id
+}
+
+function removeWritingTechniqueDimension(dimensionId: string) {
+  if (!selectedPlanType.value || selectedPlanType.value.dimensions.length <= 1) {
+    cardError.value = '每个写作手法类型至少需要保留一个维度。'
+    return
+  }
+  selectedPlanType.value.dimensions = selectedPlanType.value.dimensions
+    .filter((dimension) => dimension.id !== dimensionId)
+    .map((dimension, index) => ({ ...dimension, order: index + 1 }))
+  if (selectedDimensionId.value === dimensionId) {
+    syncSelectedDimension()
+  }
+}
+
+function createWritingTechniqueTypeDraft(name: string, order: number): WritingTechniqueTypeDraft {
+  return {
+    id: nextWritingTechniqueDraftId('writing-type'),
+    name,
+    order,
+    dimensions: [createWritingTechniqueDimensionDraft('通用分析', 1)],
+  }
+}
+
+function createWritingTechniqueDimensionDraft(name: string, order: number): WritingTechniqueDimensionDraft {
+  return {
+    id: nextWritingTechniqueDraftId('writing-dimension'),
+    name,
+    order,
+  }
+}
+
+function nextWritingTechniqueDraftId(prefix: string) {
+  writingTechniqueDraftSerial.value += 1
+  return `${prefix}-${Date.now()}-${writingTechniqueDraftSerial.value}`
 }
 
 function updateSessionChapter(chapter: library.BookChapter) {
@@ -1275,10 +1397,50 @@ onBeforeUnmount(() => {
       </n-alert>
       <n-form label-placement="top">
         <n-form-item label="拆解类型">
-          <n-select v-model:value="selectedPlanTypeId" :options="planTypeOptions" />
+          <div class="technique-inline-control">
+            <n-select v-model:value="selectedPlanTypeId" :options="planTypeOptions" />
+            <n-button secondary @click="addWritingTechniqueType">
+              <template #icon>
+                <Plus :size="14" />
+              </template>
+              新增
+            </n-button>
+          </div>
         </n-form-item>
-        <n-form-item label="拆解维度">
-          <n-select v-model:value="selectedDimensionId" :options="dimensionOptions" />
+        <template v-if="selectedPlanType">
+          <n-form-item label="类型名称">
+            <div class="technique-inline-control">
+              <n-input v-model:value="selectedPlanType.name" />
+              <n-button tertiary type="error" @click="removeWritingTechniqueType(selectedPlanType.id)">
+                <template #icon>
+                  <Trash2 :size="14" />
+                </template>
+                删除
+              </n-button>
+            </div>
+          </n-form-item>
+          <n-form-item label="拆解维度">
+            <div class="technique-inline-control">
+              <n-select v-model:value="selectedDimensionId" :options="dimensionOptions" />
+              <n-button secondary @click="addWritingTechniqueDimension">
+                <template #icon>
+                  <Plus :size="14" />
+                </template>
+                新增
+              </n-button>
+            </div>
+          </n-form-item>
+        </template>
+        <n-form-item v-if="selectedDimension" label="维度名称">
+          <div class="technique-inline-control">
+            <n-input v-model:value="selectedDimension.name" />
+            <n-button tertiary type="error" @click="removeWritingTechniqueDimension(selectedDimension.id)">
+              <template #icon>
+                <Trash2 :size="14" />
+              </template>
+              删除
+            </n-button>
+          </div>
         </n-form-item>
         <n-form-item label="我的看法 *">
           <n-input

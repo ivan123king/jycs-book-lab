@@ -250,6 +250,18 @@
     width: min(680px, calc(100vw - 32px));
 }
 
+.technique-inline-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.technique-inline-control .n-button {
+    width: 92px;
+}
+
 .split-inline-alert {
     margin: 0 0 14px;
 }

@@ -704,13 +704,15 @@ type SourceSelection struct {
 
 // CreateDeconstructionRequest 保存一张拆解卡片，并按需创建或复用来源片段。
 type CreateDeconstructionRequest struct {
-	BookPath    string            `json:"bookPath"`
-	Selection   SourceSelection   `json:"selection"`
-	PlanTypeID  string            `json:"planTypeId"`
-	DimensionID string            `json:"dimensionId"`
-	Content     string            `json:"content"`
-	FieldValues map[string]string `json:"fieldValues"`
-	TagIDs      []string          `json:"tagIds"`
+	BookPath      string            `json:"bookPath"`
+	Selection     SourceSelection   `json:"selection"`
+	PlanTypeID    string            `json:"planTypeId"`
+	PlanTypeName  string            `json:"planTypeName"`
+	DimensionID   string            `json:"dimensionId"`
+	DimensionName string            `json:"dimensionName"`
+	Content       string            `json:"content"`
+	FieldValues   map[string]string `json:"fieldValues"`
+	TagIDs        []string          `json:"tagIds"`
 }
 
 // CreateDeconstructionResult 返回本次保存后的来源片段和拆解卡片。
@@ -723,12 +725,14 @@ type CreateDeconstructionResult struct {
 
 // UpdateDeconstructionCardRequest 承载写作手法拆解卡片正文和标签的编辑结果。
 type UpdateDeconstructionCardRequest struct {
-	BookPath    string   `json:"bookPath"`
-	CardID      string   `json:"cardId"`
-	PlanTypeID  string   `json:"planTypeId"`
-	DimensionID string   `json:"dimensionId"`
-	Content     string   `json:"content"`
-	TagIDs      []string `json:"tagIds"`
+	BookPath      string   `json:"bookPath"`
+	CardID        string   `json:"cardId"`
+	PlanTypeID    string   `json:"planTypeId"`
+	PlanTypeName  string   `json:"planTypeName"`
+	DimensionID   string   `json:"dimensionId"`
+	DimensionName string   `json:"dimensionName"`
+	Content       string   `json:"content"`
+	TagIDs        []string `json:"tagIds"`
 }
 
 // UpdateDeconstructionCardResult 返回编辑后完整卡片集合，便于前端刷新列表和详情。

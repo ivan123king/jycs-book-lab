@@ -16,7 +16,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { BookOpen, Edit3, Eye, Library, MapPinned, Save, Search, Sparkles, Trash2 } from 'lucide-vue-next'
+import { BookOpen, Edit3, Eye, Library, MapPinned, Plus, Save, Search, Sparkles, Trash2 } from 'lucide-vue-next'
 import {
   BuildMaterialDraftFromCard,
   CreateMaterialFromCard,
@@ -36,6 +36,18 @@ const emit = defineEmits<{
   backToSource: [payload?: { chapterId: string; sourceTextId: string; startOffset: number }]
 }>()
 
+type WritingTechniqueDimensionDraft = {
+  id: string
+  name: string
+  order: number
+}
+type WritingTechniqueTypeDraft = {
+  id: string
+  name: string
+  order: number
+  dimensions: WritingTechniqueDimensionDraft[]
+}
+
 const workspace = ref<library.DeconstructionCardsWorkspace | null>(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -51,6 +63,7 @@ const selectedCardId = ref('')
 const detailOpen = ref(false)
 const editOpen = ref(false)
 const materialOpen = ref(false)
+const editPlanTypes = ref<WritingTechniqueTypeDraft[]>([])
 const editPlanTypeId = ref('')
 const editDimensionId = ref('')
 const editContent = ref('')
@@ -61,6 +74,7 @@ const materialContent = ref('')
 const materialTagInput = ref('')
 const materialSaving = ref(false)
 const tabIndentSpaces = '    '
+const editDraftSerial = ref(0)
 
 const activeBookPath = computed(() => props.project?.book.bookPath ?? '')
 
@@ -93,12 +107,17 @@ const selectedChapter = computed(() => {
 })
 
 const editPlanType = computed(() => {
-  const types = workspace.value?.plan.types ?? []
+  const types = editPlanTypes.value
   return types.find((item) => item.id === editPlanTypeId.value) ?? types[0] ?? null
 })
 
+const editDimension = computed(() => {
+  const dimensions = editPlanType.value?.dimensions ?? []
+  return dimensions.find((dimension) => dimension.id === editDimensionId.value) ?? dimensions[0] ?? null
+})
+
 const editPlanTypeOptions = computed(() => {
-  return (workspace.value?.plan.types ?? []).map((type) => ({
+  return editPlanTypes.value.map((type) => ({
     label: type.name,
     value: type.id,
   }))
@@ -171,7 +190,9 @@ const hasDirtyEdit = computed(() => {
   }
   return (
     editPlanTypeId.value !== card.planTypeId ||
+    (editPlanType.value?.name ?? '') !== card.planTypeName ||
     editDimensionId.value !== card.dimensionId ||
+    (editDimension.value?.name ?? '') !== card.dimensionName ||
     editContent.value !== card.content ||
     editTagInput.value !== card.tagIds.join(', ')
   )
@@ -184,6 +205,7 @@ async function loadWorkspace() {
   const bookPath = activeBookPath.value
   workspace.value = null
   selectedCardId.value = ''
+  editPlanTypes.value = []
   editPlanTypeId.value = ''
   editDimensionId.value = ''
   editContent.value = ''
@@ -217,7 +239,8 @@ function openEdit(card: library.DeconstructionCard) {
 }
 
 function syncDetailEditor() {
-  editPlanTypeId.value = selectedCard.value?.planTypeId ?? workspace.value?.plan.types[0]?.id ?? ''
+  editPlanTypes.value = buildWritingTechniqueEditTypes(selectedCard.value)
+  editPlanTypeId.value = selectedCard.value?.planTypeId ?? editPlanTypes.value[0]?.id ?? ''
   syncEditDimension(selectedCard.value?.dimensionId)
   editContent.value = selectedCard.value?.content ?? ''
   editTagInput.value = selectedCard.value?.tagIds.join(', ') ?? ''
@@ -229,10 +252,138 @@ function syncEditDimension(preferredDimensionId = '') {
     dimensions.find((dimension) => dimension.id === preferredDimensionId)?.id ?? dimensions[0]?.id ?? ''
 }
 
+// buildWritingTechniqueEditTypes 把当前模板和卡片快照合并，避免模板外历史卡片在编辑时丢失类型维度。
+function buildWritingTechniqueEditTypes(card: library.DeconstructionCard | null): WritingTechniqueTypeDraft[] {
+  const clonedTypes = (workspace.value?.plan.types ?? []).map((type, typeIndex) => ({
+    id: type.id || nextEditDraftId('writing-type'),
+    name: type.name || `写作类型 ${typeIndex + 1}`,
+    order: type.order || typeIndex + 1,
+    dimensions: (type.dimensions?.length ? type.dimensions : [{ id: '', name: '通用分析', order: 1 }]).map(
+      (dimension, dimensionIndex) => ({
+        id: dimension.id || nextEditDraftId('writing-dimension'),
+        name: dimension.name || `写作维度 ${dimensionIndex + 1}`,
+        order: dimension.order || dimensionIndex + 1,
+      }),
+    ),
+  }))
+  if (!card) {
+    return clonedTypes.length ? clonedTypes : [createEditTypeDraft('写作手法', 1)]
+  }
+  const matchedType = clonedTypes.find((type) => type.id === card.planTypeId)
+  if (!matchedType) {
+    return [
+      ...clonedTypes,
+      {
+        id: card.planTypeId || nextEditDraftId('writing-type'),
+        name: card.planTypeName || '写作手法',
+        order: clonedTypes.length + 1,
+        dimensions: [
+          {
+            id: card.dimensionId || nextEditDraftId('writing-dimension'),
+            name: card.dimensionName || '通用分析',
+            order: 1,
+          },
+        ],
+      },
+    ]
+  }
+  matchedType.name = card.planTypeName || matchedType.name
+  const matchedDimension = matchedType.dimensions.find((dimension) => dimension.id === card.dimensionId)
+  if (matchedDimension) {
+    matchedDimension.name = card.dimensionName || matchedDimension.name
+  } else {
+    matchedType.dimensions = [
+      ...matchedType.dimensions,
+      {
+        id: card.dimensionId || nextEditDraftId('writing-dimension'),
+        name: card.dimensionName || '通用分析',
+        order: matchedType.dimensions.length + 1,
+      },
+    ]
+  }
+  return clonedTypes
+}
+
+function addEditPlanType() {
+  const nextType = createEditTypeDraft(`写作类型 ${editPlanTypes.value.length + 1}`, editPlanTypes.value.length + 1)
+  editPlanTypes.value = [...editPlanTypes.value, nextType]
+  editPlanTypeId.value = nextType.id
+  syncEditDimension()
+}
+
+function removeEditPlanType(typeId: string) {
+  if (editPlanTypes.value.length <= 1) {
+    errorMessage.value = '写作手法拆解至少需要保留一个类型。'
+    return
+  }
+  editPlanTypes.value = editPlanTypes.value
+    .filter((type) => type.id !== typeId)
+    .map((type, index) => ({ ...type, order: index + 1 }))
+  if (editPlanTypeId.value === typeId) {
+    editPlanTypeId.value = editPlanTypes.value[0]?.id ?? ''
+    syncEditDimension()
+  }
+}
+
+function addEditDimension() {
+  if (!editPlanType.value) {
+    return
+  }
+  const nextDimension = createEditDimensionDraft(
+    `写作维度 ${editPlanType.value.dimensions.length + 1}`,
+    editPlanType.value.dimensions.length + 1,
+  )
+  editPlanType.value.dimensions = [...editPlanType.value.dimensions, nextDimension]
+  editDimensionId.value = nextDimension.id
+}
+
+function removeEditDimension(dimensionId: string) {
+  if (!editPlanType.value || editPlanType.value.dimensions.length <= 1) {
+    errorMessage.value = '每个写作手法类型至少需要保留一个维度。'
+    return
+  }
+  editPlanType.value.dimensions = editPlanType.value.dimensions
+    .filter((dimension) => dimension.id !== dimensionId)
+    .map((dimension, index) => ({ ...dimension, order: index + 1 }))
+  if (editDimensionId.value === dimensionId) {
+    syncEditDimension()
+  }
+}
+
+function createEditTypeDraft(name: string, order: number): WritingTechniqueTypeDraft {
+  return {
+    id: nextEditDraftId('writing-type'),
+    name,
+    order,
+    dimensions: [createEditDimensionDraft('通用分析', 1)],
+  }
+}
+
+function createEditDimensionDraft(name: string, order: number): WritingTechniqueDimensionDraft {
+  return {
+    id: nextEditDraftId('writing-dimension'),
+    name,
+    order,
+  }
+}
+
+function nextEditDraftId(prefix: string) {
+  editDraftSerial.value += 1
+  return `${prefix}-${Date.now()}-${editDraftSerial.value}`
+}
+
 async function saveSelectedCard() {
   const bookPath = activeBookPath.value
   const card = selectedCard.value
   if (!bookPath || !card) {
+    return
+  }
+  if (!editPlanType.value?.name.trim()) {
+    errorMessage.value = '请填写拆解类型名称。'
+    return
+  }
+  if (!editDimension.value?.name.trim()) {
+    errorMessage.value = '请填写拆解维度名称。'
     return
   }
   saving.value = true
@@ -243,7 +394,9 @@ async function saveSelectedCard() {
       bookPath,
       cardId: card.id,
       planTypeId: editPlanTypeId.value,
+      planTypeName: editPlanType.value.name,
       dimensionId: editDimensionId.value,
+      dimensionName: editDimension.value.name,
       content: editContent.value,
       tagIds: splitTags(editTagInput.value),
     } as library.UpdateDeconstructionCardRequest)
@@ -670,10 +823,50 @@ defineExpose({
         </div>
         <n-form label-placement="top">
           <n-form-item label="拆解类型">
-            <n-select v-model:value="editPlanTypeId" :options="editPlanTypeOptions" />
+            <div class="writing-inline-control">
+              <n-select v-model:value="editPlanTypeId" :options="editPlanTypeOptions" />
+              <n-button secondary @click="addEditPlanType">
+                <template #icon>
+                  <Plus :size="14" />
+                </template>
+                新增
+              </n-button>
+            </div>
           </n-form-item>
-          <n-form-item label="拆解维度">
-            <n-select v-model:value="editDimensionId" :options="editDimensionOptions" />
+          <template v-if="editPlanType">
+            <n-form-item label="类型名称">
+              <div class="writing-inline-control">
+                <n-input v-model:value="editPlanType.name" />
+                <n-button tertiary type="error" @click="removeEditPlanType(editPlanType.id)">
+                  <template #icon>
+                    <Trash2 :size="14" />
+                  </template>
+                  删除
+                </n-button>
+              </div>
+            </n-form-item>
+            <n-form-item label="拆解维度">
+              <div class="writing-inline-control">
+                <n-select v-model:value="editDimensionId" :options="editDimensionOptions" />
+                <n-button secondary @click="addEditDimension">
+                  <template #icon>
+                    <Plus :size="14" />
+                  </template>
+                  新增
+                </n-button>
+              </div>
+            </n-form-item>
+          </template>
+          <n-form-item v-if="editDimension" label="维度名称">
+            <div class="writing-inline-control">
+              <n-input v-model:value="editDimension.name" />
+              <n-button tertiary type="error" @click="removeEditDimension(editDimension.id)">
+                <template #icon>
+                  <Trash2 :size="14" />
+                </template>
+                删除
+              </n-button>
+            </div>
           </n-form-item>
           <n-form-item label="拆解内容">
             <n-input
@@ -832,6 +1025,18 @@ defineExpose({
 .empty-text {
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.writing-inline-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.writing-inline-control :deep(.n-button) {
+  width: 92px;
 }
 
 .cards-footer {

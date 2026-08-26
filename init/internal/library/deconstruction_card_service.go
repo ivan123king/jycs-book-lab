@@ -60,13 +60,13 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	if err != nil {
 		return CreateDeconstructionResult{}, err
 	}
-	planType, ok := findPlanType(plan, request.PlanTypeID)
-	if !ok {
-		return CreateDeconstructionResult{}, fmt.Errorf("拆解类型不存在: %s", request.PlanTypeID)
+	planType, err := resolveWritingTechniquePlanType(plan, request.PlanTypeID, request.PlanTypeName)
+	if err != nil {
+		return CreateDeconstructionResult{}, err
 	}
-	dimension, ok := findPlanDimension(planType, request.DimensionID)
-	if !ok {
-		return CreateDeconstructionResult{}, fmt.Errorf("拆解维度不存在: %s", request.DimensionID)
+	dimension, err := resolveWritingTechniqueDimension(planType, request.DimensionID, request.DimensionName)
+	if err != nil {
+		return CreateDeconstructionResult{}, err
 	}
 	content := strings.TrimSpace(request.Content)
 	if content == "" {
@@ -147,13 +147,13 @@ func UpdateDeconstructionCard(request UpdateDeconstructionCardRequest) (UpdateDe
 	if err != nil {
 		return UpdateDeconstructionCardResult{}, err
 	}
-	planType, ok := findPlanType(plan, request.PlanTypeID)
-	if !ok {
-		return UpdateDeconstructionCardResult{}, fmt.Errorf("拆解类型不存在: %s", request.PlanTypeID)
+	planType, err := resolveWritingTechniquePlanType(plan, request.PlanTypeID, request.PlanTypeName)
+	if err != nil {
+		return UpdateDeconstructionCardResult{}, err
 	}
-	dimension, ok := findPlanDimension(planType, request.DimensionID)
-	if !ok {
-		return UpdateDeconstructionCardResult{}, fmt.Errorf("拆解维度不存在: %s", request.DimensionID)
+	dimension, err := resolveWritingTechniqueDimension(planType, request.DimensionID, request.DimensionName)
+	if err != nil {
+		return UpdateDeconstructionCardResult{}, err
 	}
 	cards, err := loadDeconstructionCards(bookPath)
 	if err != nil {
@@ -307,6 +307,56 @@ func findPlanDimension(planType DeconstructionType, dimensionID string) (Deconst
 		}
 	}
 	return DeconstructionDimension{}, false
+}
+
+// resolveWritingTechniquePlanType 允许阅读弹框把当前模板当作参考，并保存本次临时新增的类型快照。
+func resolveWritingTechniquePlanType(plan DeconstructionPlan, planTypeID string, planTypeName string) (DeconstructionType, error) {
+	cleanID := strings.TrimSpace(planTypeID)
+	cleanName := strings.TrimSpace(planTypeName)
+	if cleanID != "" {
+		if planType, ok := findPlanType(plan, cleanID); ok {
+			if cleanName != "" {
+				planType.Name = cleanName
+			}
+			return planType, nil
+		}
+	}
+	if cleanName == "" {
+		return DeconstructionType{}, errors.New("拆解类型不能为空")
+	}
+	if cleanID == "" {
+		cleanID = writingTechniqueSnapshotID("writing-type", cleanName)
+	}
+	return DeconstructionType{ID: cleanID, Name: cleanName, Dimensions: []DeconstructionDimension{}}, nil
+}
+
+// resolveWritingTechniqueDimension 保存模板外临时维度时只影响当前卡片，不回写当前书模板。
+func resolveWritingTechniqueDimension(planType DeconstructionType, dimensionID string, dimensionName string) (DeconstructionDimension, error) {
+	cleanID := strings.TrimSpace(dimensionID)
+	cleanName := strings.TrimSpace(dimensionName)
+	if cleanID != "" {
+		if dimension, ok := findPlanDimension(planType, cleanID); ok {
+			if cleanName != "" {
+				dimension.Name = cleanName
+			}
+			return dimension, nil
+		}
+	}
+	if cleanName == "" {
+		return DeconstructionDimension{}, errors.New("拆解维度不能为空")
+	}
+	if cleanID == "" {
+		cleanID = writingTechniqueSnapshotID("writing-dimension", cleanName)
+	}
+	return DeconstructionDimension{ID: cleanID, Name: cleanName, Order: 1}, nil
+}
+
+func writingTechniqueSnapshotID(prefix string, name string) string {
+	id := strings.TrimSpace(strings.ReplaceAll(name, " ", "-"))
+	if id == "" {
+		return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+	}
+	return fmt.Sprintf("%s-%s", prefix, id)
 }
 
 // findReusableSourceText 复用完全一致的选文来源，保证同一片段可挂多张拆解卡片。
