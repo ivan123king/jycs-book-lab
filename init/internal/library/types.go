@@ -69,6 +69,22 @@ type ImportChapterPreview struct {
 	WordCount   int    `json:"wordCount"`
 }
 
+// ImportTimingStage 记录导入链路中某个阶段的耗时，用于定位本地文件读取、章节识别或落盘卡顿。
+type ImportTimingStage struct {
+	Name       string `json:"name"`
+	Label      string `json:"label"`
+	DurationMs int64  `json:"durationMs"`
+}
+
+// ImportDiagnostics 是导入预览和确认导入的轻量诊断信息，只通过 API 返回，不写入正式 book.json。
+type ImportDiagnostics struct {
+	Action       string              `json:"action"`
+	TotalMs      int64               `json:"totalMs"`
+	BookSize     int64               `json:"bookSize"`
+	ChapterCount int                 `json:"chapterCount"`
+	Stages       []ImportTimingStage `json:"stages"`
+}
+
 // ImportDraft 是 TXT 小说被确认入库前的预览结果，正式数据尚未写入书库。
 type ImportDraft struct {
 	BookID       string                 `json:"bookId"`
@@ -80,6 +96,7 @@ type ImportDraft struct {
 	BookSize     int64                  `json:"bookSize"`
 	ChapterCount int                    `json:"chapterCount"`
 	Chapters     []ImportChapterPreview `json:"chapters"`
+	Diagnostics  ImportDiagnostics      `json:"diagnostics"`
 }
 
 // ConfirmImportRequest 承载用户在导入面板确认后的小说名、简介和预览来源。
@@ -92,8 +109,9 @@ type ConfirmImportRequest struct {
 
 // ConfirmImportResult 返回确认导入后的书库索引和新建小说项目。
 type ConfirmImportResult struct {
-	Library LibraryState `json:"library"`
-	Project BookProject  `json:"project"`
+	Library     LibraryState      `json:"library"`
+	Project     BookProject       `json:"project"`
+	Diagnostics ImportDiagnostics `json:"diagnostics"`
 }
 
 // ReadingPosition 保存当前书最近阅读到的章节和正文偏移。

@@ -33,6 +33,12 @@ func TestConfirmNovelImportCreatesPortableBookProject(t *testing.T) {
 	if len(result.Project.Chapters) != 2 {
 		t.Fatalf("章节数 = %d, want 2", len(result.Project.Chapters))
 	}
+	if result.Diagnostics.Action != "confirmImport" || result.Diagnostics.ChapterCount != 2 {
+		t.Fatalf("导入诊断基础信息不正确: %+v", result.Diagnostics)
+	}
+	if !hasImportStage(result.Diagnostics, "readText") || !hasImportStage(result.Diagnostics, "writeChapters") {
+		t.Fatalf("导入诊断缺少关键阶段: %+v", result.Diagnostics.Stages)
+	}
 
 	bookPath := filepath.Join(libraryPath, "books", "book-test-001")
 	for _, requiredPath := range []string{
@@ -61,6 +67,16 @@ func TestConfirmNovelImportCreatesPortableBookProject(t *testing.T) {
 	if string(chapterContent) != "雨在码头上铺开。\n\n" {
 		t.Fatalf("章节正文 = %q, want %q", string(chapterContent), "雨在码头上铺开。\n\n")
 	}
+}
+
+// hasImportStage 判断导入诊断中是否记录了指定阶段，避免性能定位能力被后续改动破坏。
+func hasImportStage(diagnostics ImportDiagnostics, stageName string) bool {
+	for _, stage := range diagnostics.Stages {
+		if stage.Name == stageName {
+			return true
+		}
+	}
+	return false
 }
 
 // TestRemoveBookFromLibraryDeletesProjectData 覆盖书库移除会删除单书项目目录并刷新轻量索引。

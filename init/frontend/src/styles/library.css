@@ -94,12 +94,72 @@
     margin-bottom: 16px;
 }
 
+.import-diagnostics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    color: #4b5866;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.import-diagnostics strong {
+    flex-basis: 100%;
+    color: #17212b;
+    font-size: 13px;
+}
+
 .chapter-table-card {
     margin-top: 0;
+}
+
+.import-chapter-table {
+    width: 100%;
+    overflow: hidden;
+    border-spacing: 0;
+    color: #17212b;
+    font-size: 14px;
+}
+
+.import-chapter-table th,
+.import-chapter-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid #e5ebf0;
+    text-align: left;
+}
+
+.import-chapter-table th:first-child,
+.import-chapter-table td:first-child {
+    width: 90px;
+    color: #607080;
+}
+
+.import-chapter-table th {
+    background: #f6f8fa;
+    color: #405060;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.import-chapter-table td:last-child {
+    word-break: break-word;
 }
 
 .chapter-page-footer {
     margin-top: 16px;
     color: #647180;
     font-size: 13px;
+}
+
+.chapter-page-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.chapter-page-actions strong {
+    min-width: 64px;
+    color: #17212b;
+    text-align: center;
 }

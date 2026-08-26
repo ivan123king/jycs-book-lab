@@ -5,7 +5,6 @@ import {
   NAlert,
   NButton,
   NCard,
-  NDataTable,
   NDescriptions,
   NDescriptionsItem,
   NForm,
@@ -13,7 +12,6 @@ import {
   NGi,
   NGrid,
   NInput,
-  NPagination,
   NPopconfirm,
   NSpace,
 } from 'naive-ui'
@@ -58,10 +56,12 @@ const importSuccess = ref('')
 const importChapterPage = ref(1)
 const importChapterPageSize = 10
 
-const importChapterColumns = [
-  { title: '序号', key: 'order', width: 90 },
-  { title: '章节标题', key: 'title' },
-]
+/**
+ * 为章节预览表格提供稳定行标识，避免快速分页时表格内部复用错误的行状态。
+ */
+function importChapterRowKey(row: { id?: string; order: number }) {
+  return row.id || `chapter-order-${row.order}`
+}
 
 const filteredLibraryBooks = computed(() => {
   const keyword = librarySearch.value.trim().toLowerCase()
@@ -87,6 +87,11 @@ const importChapterPageCount = computed(() => {
   return Math.ceil(importDraft.value.chapterCount / importChapterPageSize)
 })
 
+function setImportChapterPage(page: number) {
+  const nextPage = Math.min(importChapterPageCount.value, Math.max(1, page))
+  importChapterPage.value = nextPage
+}
+
 const currentImportInfo = computed(() => ({
   sourcePath: importDraft.value?.sourcePath ?? '',
   libraryPath: importDraft.value?.libraryPath ?? libraryState.value?.libraryPath ?? '',
@@ -94,6 +99,20 @@ const currentImportInfo = computed(() => ({
   size: formatBytes(importDraft.value?.bookSize ?? 0),
   chapterCount: importDraft.value?.chapterCount ?? 0,
 }))
+
+const importDiagnostics = computed(() => importDraft.value?.diagnostics)
+
+const importDiagnosticStages = computed(() => importDiagnostics.value?.stages ?? [])
+
+function formatDurationMs(durationMs?: number) {
+  if (durationMs === undefined || durationMs === null) {
+    return '-'
+  }
+  if (durationMs < 1000) {
+    return `${durationMs} ms`
+  }
+  return `${(durationMs / 1000).toFixed(2)} s`
+}
 
 /**
  * 启动时加载书库索引，页面只展示后端返回的 index.json 轻量数据。
@@ -198,6 +217,7 @@ async function confirmImport() {
       description: importForm.value.description,
     })
     libraryState.value = result.library
+    console.info('确认导入性能诊断', result.diagnostics)
     importSuccess.value = '导入成功，已写入书库目录。'
     resetImportDraft()
     libraryMode.value = 'list'
@@ -429,24 +449,68 @@ onMounted(loadLibrary)
               <n-descriptions-item label="入库路径">{{ currentImportInfo.targetPath }}</n-descriptions-item>
               <n-descriptions-item label="大小">{{ currentImportInfo.size }}</n-descriptions-item>
               <n-descriptions-item label="章节数">{{ currentImportInfo.chapterCount }}</n-descriptions-item>
+              <n-descriptions-item v-if="importDiagnostics" label="解析耗时">
+                <div class="import-diagnostics">
+                  <strong>总计 {{ formatDurationMs(importDiagnostics.totalMs) }}</strong>
+                  <span
+                    v-for="stage in importDiagnosticStages"
+                    :key="stage.name"
+                  >
+                    {{ stage.label }} {{ formatDurationMs(stage.durationMs) }}
+                  </span>
+                </div>
+              </n-descriptions-item>
             </n-descriptions>
           </n-card>
         </div>
 
         <n-card :bordered="false" title="章节信息" class="workspace-card chapter-table-card">
-          <n-data-table
-            :columns="importChapterColumns"
-            :data="pagedImportChapters"
-            :bordered="false"
-            :pagination="false"
-          />
+          <table class="import-chapter-table">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>章节标题</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="chapter in pagedImportChapters" :key="importChapterRowKey(chapter)">
+                <td>{{ chapter.order }}</td>
+                <td>{{ chapter.title }}</td>
+              </tr>
+            </tbody>
+          </table>
           <div class="chapter-page-footer">
             <span>共识别 {{ currentImportInfo.chapterCount }} 章，仅展示标题用于快速检查。</span>
-            <n-pagination
-              v-model:page="importChapterPage"
-              :page-count="importChapterPageCount"
-              :page-slot="7"
-            />
+            <div class="chapter-page-actions">
+              <n-button size="small" secondary :disabled="importChapterPage <= 1" @click="setImportChapterPage(1)">
+                首页
+              </n-button>
+              <n-button
+                size="small"
+                secondary
+                :disabled="importChapterPage <= 1"
+                @click="setImportChapterPage(importChapterPage - 1)"
+              >
+                上一页
+              </n-button>
+              <strong>{{ importChapterPage }} / {{ importChapterPageCount }}</strong>
+              <n-button
+                size="small"
+                secondary
+                :disabled="importChapterPage >= importChapterPageCount"
+                @click="setImportChapterPage(importChapterPage + 1)"
+              >
+                下一页
+              </n-button>
+              <n-button
+                size="small"
+                secondary
+                :disabled="importChapterPage >= importChapterPageCount"
+                @click="setImportChapterPage(importChapterPageCount)"
+              >
+                末页
+              </n-button>
+            </div>
           </div>
         </n-card>
 

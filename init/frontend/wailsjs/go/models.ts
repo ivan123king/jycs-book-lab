@@ -218,6 +218,60 @@ export namespace library {
 	        this.description = source["description"];
 	    }
 	}
+	export class ImportTimingStage {
+	    name: string;
+	    label: string;
+	    durationMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportTimingStage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.label = source["label"];
+	        this.durationMs = source["durationMs"];
+	    }
+	}
+	export class ImportDiagnostics {
+	    action: string;
+	    totalMs: number;
+	    bookSize: number;
+	    chapterCount: number;
+	    stages: ImportTimingStage[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportDiagnostics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action = source["action"];
+	        this.totalMs = source["totalMs"];
+	        this.bookSize = source["bookSize"];
+	        this.chapterCount = source["chapterCount"];
+	        this.stages = this.convertValues(source["stages"], ImportTimingStage);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LibraryBookEntry {
 	    bookName: string;
 	    bookPath: string;
@@ -303,6 +357,7 @@ export namespace library {
 	export class ConfirmImportResult {
 	    library: LibraryState;
 	    project: BookProject;
+	    diagnostics: ImportDiagnostics;
 	
 	    static createFrom(source: any = {}) {
 	        return new ConfirmImportResult(source);
@@ -312,6 +367,7 @@ export namespace library {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.library = this.convertValues(source["library"], LibraryState);
 	        this.project = this.convertValues(source["project"], BookProject);
+	        this.diagnostics = this.convertValues(source["diagnostics"], ImportDiagnostics);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1391,6 +1447,7 @@ export namespace library {
 	        this.wordCount = source["wordCount"];
 	    }
 	}
+	
 	export class ImportDraft {
 	    bookId: string;
 	    bookName: string;
@@ -1401,6 +1458,7 @@ export namespace library {
 	    bookSize: number;
 	    chapterCount: number;
 	    chapters: ImportChapterPreview[];
+	    diagnostics: ImportDiagnostics;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImportDraft(source);
@@ -1417,6 +1475,7 @@ export namespace library {
 	        this.bookSize = source["bookSize"];
 	        this.chapterCount = source["chapterCount"];
 	        this.chapters = this.convertValues(source["chapters"], ImportChapterPreview);
+	        this.diagnostics = this.convertValues(source["diagnostics"], ImportDiagnostics);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1437,6 +1496,7 @@ export namespace library {
 		    return a;
 		}
 	}
+	
 	
 	
 	export class LibraryMaterial {
