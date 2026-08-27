@@ -2471,3 +2471,30 @@ export namespace library {
 
 }
 
+export namespace main {
+	
+	export class ApplicationInfo {
+	    name: string;
+	    displayName: string;
+	    version: string;
+	    description: string;
+	    authors: string[];
+	    contactEmail: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApplicationInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.displayName = source["displayName"];
+	        this.version = source["version"];
+	        this.description = source["description"];
+	        this.authors = source["authors"];
+	        this.contactEmail = source["contactEmail"];
+	    }
+	}
+
+}
+

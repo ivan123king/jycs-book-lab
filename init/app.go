@@ -3,7 +3,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	booklibrary "jiayi-book-lab/internal/library"
 
@@ -101,6 +103,25 @@ type App struct {
 	ctx context.Context
 }
 
+type ApplicationInfo struct {
+	Name         string   `json:"name"`
+	DisplayName  string   `json:"displayName"`
+	Version      string   `json:"version"`
+	Description  string   `json:"description"`
+	Authors      []string `json:"authors"`
+	ContactEmail string   `json:"contactEmail"`
+}
+
+type embeddedWailsConfig struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Info    struct {
+		ProductName    string `json:"productName"`
+		ProductVersion string `json:"productVersion"`
+		Comments       string `json:"comments"`
+	} `json:"info"`
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
@@ -115,6 +136,49 @@ func (a *App) startup(ctx context.Context) {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// GetApplicationInfo 返回关于弹框使用的应用信息，版本优先来自嵌入的 wails.json。
+func (a *App) GetApplicationInfo() ApplicationInfo {
+	info := ApplicationInfo{
+		Name:         "jiayi-book-lab",
+		DisplayName:  "佳依拆书",
+		Version:      "v1.0",
+		Description:  "面向小说作者、写作爱好者和文学研究者的本地小说拆解与写作学习工具，帮助用户从阅读原文、选文拆解到沉淀个人写作素材。",
+		Authors:      []string{"GPT5.5", "刘伟"},
+		ContactEmail: "lw18751836671@163.com",
+	}
+
+	var config embeddedWailsConfig
+	if err := json.Unmarshal(wailsConfig, &config); err != nil {
+		return info
+	}
+	if config.Name != "" {
+		info.Name = config.Name
+	}
+	if config.Info.ProductName != "" {
+		info.DisplayName = config.Info.ProductName
+	}
+	if config.Info.ProductVersion != "" {
+		info.Version = normalizeApplicationVersion(config.Info.ProductVersion)
+	} else if config.Version != "" {
+		info.Version = normalizeApplicationVersion(config.Version)
+	}
+	if config.Info.Comments != "" {
+		info.Description = config.Info.Comments
+	}
+	return info
+}
+
+func normalizeApplicationVersion(version string) string {
+	trimmedVersion := strings.TrimSpace(version)
+	if trimmedVersion == "" {
+		return "v1.0"
+	}
+	if strings.HasPrefix(strings.ToLower(trimmedVersion), "v") {
+		return trimmedVersion
+	}
+	return "v" + trimmedVersion
 }
 
 // GetLibraryState 读取当前书库目录和轻量索引，用于启动时恢复书库页面。

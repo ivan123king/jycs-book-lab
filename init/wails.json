@@ -1,11 +1,15 @@
 {
   "name": "jiayi-book-lab",
   "outputfilename": "jiayi-book-lab",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
   "info": {
     "companyName": "Jiayi Book Lab",
     "productName": "佳依拆书",
-    "productVersion": "0.1.0",
+    "productVersion": "1.0.0",
     "copyright": "Copyright 2026 Jiayi Book Lab",
-    "comments": "本地优先的小说拆解与写作学习工具"
+    "comments": "面向小说作者、写作爱好者和文学研究者的本地小说拆解与写作学习工具，帮助用户从阅读原文、选文拆解到沉淀个人写作素材。"
   }
 }

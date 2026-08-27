@@ -46,6 +46,10 @@ export function DeleteStoryPlotCard(arg1) {
   return window['go']['main']['App']['DeleteStoryPlotCard'](arg1);
 }
 
+export function GetApplicationInfo() {
+  return window['go']['main']['App']['GetApplicationInfo']();
+}
+
 export function GetChapterContent(arg1) {
   return window['go']['main']['App']['GetChapterContent'](arg1);
 }

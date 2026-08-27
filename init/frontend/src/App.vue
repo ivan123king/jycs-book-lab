@@ -1,9 +1,11 @@
 <script setup lang="ts">
-// App.vue 负责第一阶段应用壳层路由和当前书摘要，不承载具体页面业务实现。
-import { computed, onMounted, ref } from 'vue'
-import { NButton, NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NScrollbar } from 'naive-ui'
-import { Plus, RefreshCw } from 'lucide-vue-next'
-import { OpenLastReadingSession } from '@wails/go/main/App'
+// App.vue 负责第一阶段应用壳层路由、Wails 原生菜单事件和当前书摘要，不承载具体页面业务实现。
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { NButton, NConfigProvider, NLayout, NLayoutContent, NMessageProvider, NModal, NScrollbar } from 'naive-ui'
+import { Mail, Plus, RefreshCw, X } from 'lucide-vue-next'
+import { GetApplicationInfo, OpenLastReadingSession } from '@wails/go/main/App'
+import { EventsOn } from '@wails/runtime/runtime'
+import aboutBgUrl from '@/assets/images/about-bg.jpg'
 import AppSidebar from '@/components/app/AppSidebar.vue'
 import AppTopbar from '@/components/app/AppTopbar.vue'
 import { defaultCurrentBook } from '@/data/workbenchFixtures'
@@ -30,10 +32,29 @@ const deconstructionCardsPageRef = ref<InstanceType<typeof DeconstructionCardsPa
 const storyPlotPageRef = ref<InstanceType<typeof StoryPlotPreviewPanel> | null>(null)
 const materialsPageRef = ref<InstanceType<typeof MaterialsPage> | null>(null)
 const libraryMaterialsPageRef = ref<InstanceType<typeof LibraryMaterialsPage> | null>(null)
+const aboutDialogOpen = ref(false)
+const applicationInfo = ref<ApplicationInfo>({
+  name: 'jiayi-book-lab',
+  displayName: '佳依拆书',
+  version: 'v1.0',
+  description: '面向小说作者、写作爱好者和文学研究者的本地小说拆解与写作学习工具，帮助用户从阅读原文、选文拆解到沉淀个人写作素材。',
+  authors: ['GPT5.5', '刘伟'],
+  contactEmail: 'lw18751836671@163.com',
+})
+let stopAboutMenuListener: (() => void) | null = null
 
 type ApplyCurrentBookOptions = {
   navigateToReading?: boolean
   readingPosition?: string
+}
+
+type ApplicationInfo = {
+  name: string
+  displayName: string
+  version: string
+  description: string
+  authors: string[]
+  contactEmail: string
 }
 
 type ReadingSourceFocus = {
@@ -166,7 +187,27 @@ function openLibraryMaterialCreate() {
   libraryMaterialsPageRef.value?.openCreate()
 }
 
-onMounted(restoreLastOpenedBook)
+async function loadApplicationInfo() {
+  try {
+    applicationInfo.value = await GetApplicationInfo()
+  } catch (error) {
+    console.warn('读取应用信息失败', error)
+  }
+}
+
+function openAboutDialog() {
+  aboutDialogOpen.value = true
+}
+
+onMounted(() => {
+  restoreLastOpenedBook()
+  loadApplicationInfo()
+  stopAboutMenuListener = EventsOn('app:open-about-dialog', openAboutDialog)
+})
+
+onUnmounted(() => {
+  stopAboutMenuListener?.()
+})
 </script>
 
 <template>
@@ -278,6 +319,152 @@ onMounted(restoreLastOpenedBook)
           </n-layout-content>
         </n-layout>
       </n-layout>
+
+      <n-modal v-model:show="aboutDialogOpen" :bordered="false" :show-icon="false">
+        <section
+          class="about-panel"
+          :style="{
+            backgroundImage: `linear-gradient(120deg, rgba(16, 20, 28, 0.88), rgba(16, 20, 28, 0.58)), url(${aboutBgUrl})`,
+          }"
+          aria-label="关于佳依拆书"
+        >
+          <n-button class="about-close" circle tertiary type="default" aria-label="关闭关于窗口" @click="aboutDialogOpen = false">
+            <template #icon>
+              <X :size="18" />
+            </template>
+          </n-button>
+
+          <div class="about-content">
+            <div class="about-kicker">本地小说拆解与写作学习工具</div>
+            <h2>{{ applicationInfo.displayName }}</h2>
+            <div class="about-version">{{ applicationInfo.version }}</div>
+            <p>{{ applicationInfo.description }}</p>
+
+            <dl class="about-meta">
+              <div>
+                <dt>作者</dt>
+                <dd>{{ applicationInfo.authors.join('、') }}</dd>
+              </div>
+              <div>
+                <dt>联系方式</dt>
+                <dd>
+                  <Mail :size="15" />
+                  <span>{{ applicationInfo.contactEmail }}</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </n-modal>
     </n-message-provider>
   </n-config-provider>
 </template>
+
+<style scoped>
+.about-panel {
+  position: relative;
+  width: min(680px, calc(100vw - 48px));
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+  color: #f8fafc;
+}
+
+.about-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.about-content {
+  display: flex;
+  min-height: 420px;
+  width: min(430px, 100%);
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px;
+}
+
+.about-kicker {
+  margin-bottom: 12px;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 13px;
+}
+
+.about-content h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.about-version {
+  margin-top: 10px;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 14px;
+}
+
+.about-content p {
+  margin: 22px 0 0;
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.about-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0 0;
+}
+
+.about-meta div {
+  min-width: 0;
+}
+
+.about-meta dt {
+  margin-bottom: 6px;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 12px;
+}
+
+.about-meta dd {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #ffffff;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .about-panel {
+    width: calc(100vw - 28px);
+    min-height: 480px;
+  }
+
+  .about-content {
+    min-height: 480px;
+    padding: 34px 26px;
+  }
+
+  .about-content h2 {
+    font-size: 30px;
+  }
+
+  .about-meta {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
