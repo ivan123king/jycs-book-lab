@@ -1,13 +1,11 @@
 {
-  "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "jiayi-book-lab",
-  "outputfilename": "init",
-  "frontend:install": "npm install",
-  "frontend:build": "npm run build",
-  "frontend:dev:watcher": "npm run dev",
-  "frontend:dev:serverUrl": "auto",
-  "author": {
-    "name": "lw18751836671@163.com",
-    "email": "lw18751836671@163.com"
+  "outputfilename": "jiayi-book-lab",
+  "info": {
+    "companyName": "Jiayi Book Lab",
+    "productName": "佳依拆书",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026 Jiayi Book Lab",
+    "comments": "本地优先的小说拆解与写作学习工具"
   }
 }

@@ -19,6 +19,7 @@
    - 书库素材库、单书素材引用、书库自有素材、移除书籍前素材迁移：`docs/dev-guides/global-material-library.md`
    - 后端、本地数据、业务服务：`docs/dev-guides/backend-local-data.md`
    - 技术选型、进程边界、存储原则：`docs/dev-guides/tech-stack.md`
+   - Windows 打包、免安装 zip 包、NSIS 安装包：`docs/dev-guides/windows-packaging.md`
    - 注释、文件组织、协作规则：`docs/dev-guides/coding-rules.md`
 
 ## 文档索引维护
@@ -40,6 +41,7 @@
 | `docs/ai-guides/product-brief.md` | AI 产品简述，说明产品定位、核心对象、产品原则和 MVP 边界。 | 所有产品理解、功能设计、开发任务。 |
 | `docs/dev-guides/index.md` | 开发指南总索引，说明阅读顺序、模块边界和检查清单。 | 所有代码修改和文档修改任务。 |
 | `docs/dev-guides/project-initialization.md` | 工程创建指南，说明如何在仓库根目录下创建 `init/` Wails + Vue 3 工程并完成首次运行和构建验证。 | 首次创建工程、复现初始化流程、检查初始化命令和本地开发环境任务。 |
+| `docs/dev-guides/windows-packaging.md` | Windows 打包指南，说明常用打包命令、免安装 zip 包、NSIS 安装包、首次配置和发布检查。 | Windows 发布、打包 zip 免安装版、生成安装包、配置应用名称版本和排查打包问题任务。 |
 | `docs/dev-guides/tech-stack.md` | 技术选型与本地 PC 产品约束。 | 技术架构、依赖选择、本地存储、进程边界相关任务。 |
 | `docs/dev-guides/frontend-pages.md` | 页面模块、交互和组件开发指南。 | 书库、导入、阅读、拆解、素材、分析等前端页面任务。 |
 | `docs/dev-guides/page-design/overall-page-structure.md` | 页面整体结构与模块拆分文档，说明页面导航层级、模块职责、复用组件和第一阶段页面推进顺序。 | 页面设计评审、页面功能拆分、前端编码前的结构确认任务。 |
