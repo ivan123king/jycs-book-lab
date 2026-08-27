@@ -238,6 +238,17 @@ func writeBookProjectFromDraft(draft ImportDraft, text string, chapters []BookCh
 		return BookProject{}, err
 	}
 	timer.mark("writeBookJSON", "写入书籍元数据")
+	preferences, err := defaultReadingPreferencesForNewBook()
+	if err != nil {
+		_ = os.RemoveAll(tempPath)
+		return BookProject{}, fmt.Errorf("读取新书默认阅读偏好失败: %w", err)
+	}
+	initialReadingState := defaultReadingStateWithPreferences(project.Book.ID, chooseChapterForPosition(project, ""), preferences)
+	if err := writeJSONFileAtomic(filepath.Join(tempPath, filepath.FromSlash(readingStateRelativePath)), initialReadingState); err != nil {
+		_ = os.RemoveAll(tempPath)
+		return BookProject{}, fmt.Errorf("写入初始阅读状态失败: %w", err)
+	}
+	timer.mark("writeReadingState", "写入初始阅读状态")
 	if err := ensureDeconstructionPlanFiles(tempPath, project.Book.ID); err != nil {
 		_ = os.RemoveAll(tempPath)
 		return BookProject{}, err

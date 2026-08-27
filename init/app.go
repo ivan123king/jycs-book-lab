@@ -83,6 +83,7 @@ type ChapterMemoCollection = booklibrary.ChapterMemoCollection
 type ReadingSession = booklibrary.ReadingSession
 type ChapterContentRequest = booklibrary.ChapterContentRequest
 type ChapterContentResult = booklibrary.ChapterContentResult
+type SaveAppSettingsRequest = booklibrary.SaveAppSettingsRequest
 type SaveReadingPositionRequest = booklibrary.SaveReadingPositionRequest
 type SaveReadingPreferencesRequest = booklibrary.SaveReadingPreferencesRequest
 type SaveChapterContentRequest = booklibrary.SaveChapterContentRequest
@@ -184,6 +185,16 @@ func normalizeApplicationVersion(version string) string {
 // GetLibraryState 读取当前书库目录和轻量索引，用于启动时恢复书库页面。
 func (a *App) GetLibraryState() (LibraryState, error) {
 	return booklibrary.LoadLibraryState()
+}
+
+// GetAppSettings 读取设置页使用的应用级偏好，不包含单本书正式数据。
+func (a *App) GetAppSettings() (AppSettings, error) {
+	return booklibrary.LoadAppSettings()
+}
+
+// SaveAppSettings 保存应用级默认偏好；已有小说阅读字号仍以项目目录为准。
+func (a *App) SaveAppSettings(request SaveAppSettingsRequest) (AppSettings, error) {
+	return booklibrary.SaveAppSettings(request)
 }
 
 // ChooseLibraryDirectory 让用户选择书库根目录，并在目录中创建或读取 index.json。

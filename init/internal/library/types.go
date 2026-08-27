@@ -3,9 +3,10 @@ package library
 
 // AppSettings 保存应用级偏好，只记录与具体书籍无关的全局配置。
 type AppSettings struct {
-	Version            int    `json:"version"`
-	LibraryPath        string `json:"libraryPath"`
-	LastOpenedBookPath string `json:"lastOpenedBookPath"`
+	Version               int    `json:"version"`
+	LibraryPath           string `json:"libraryPath"`
+	LastOpenedBookPath    string `json:"lastOpenedBookPath"`
+	DefaultReaderFontSize int    `json:"defaultReaderFontSize"`
 }
 
 // LibraryBookEntry 是书库 index.json 中用于快速展示书籍列表的轻量入口。
@@ -681,6 +682,11 @@ type SaveReadingPositionRequest struct {
 type SaveReadingPreferencesRequest struct {
 	BookPath string `json:"bookPath"`
 	FontSize int    `json:"fontSize"`
+}
+
+// SaveAppSettingsRequest 保存应用级偏好，不覆盖单本小说项目中的正式阅读偏好。
+type SaveAppSettingsRequest struct {
+	DefaultReaderFontSize int `json:"defaultReaderFontSize"`
 }
 
 // SaveChapterContentRequest 保存编辑 TAB 中修改后的章节标题和正文。

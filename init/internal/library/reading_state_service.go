@@ -74,11 +74,16 @@ func SaveReadingPreferences(request SaveReadingPreferencesRequest) (ReadingState
 
 // defaultReadingState 创建旧项目缺失阅读状态时使用的默认位置。
 func defaultReadingState(bookID string, chapter BookChapter) ReadingState {
+	return defaultReadingStateWithPreferences(bookID, chapter, ReadingPreferences{FontSize: defaultReaderFontSize})
+}
+
+// defaultReadingStateWithPreferences 创建新书或旧项目补齐阅读状态时使用的初始位置。
+func defaultReadingStateWithPreferences(bookID string, chapter BookChapter, preferences ReadingPreferences) ReadingState {
 	return ReadingState{
 		Version:                1,
 		BookID:                 bookID,
 		ReadingProgressPercent: 0,
-		Preferences:            ReadingPreferences{FontSize: defaultReaderFontSize},
+		Preferences:            normalizeReadingPreferences(preferences),
 		LastPosition: ReadingPosition{
 			ChapterID:          chapter.ID,
 			ChapterOrder:       chapter.Order,

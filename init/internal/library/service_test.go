@@ -128,6 +128,78 @@ func TestLibraryIndexOrdersRecentBooksFirst(t *testing.T) {
 	}
 }
 
+// TestGlobalDefaultReaderFontSizeOnlyAppliesToNewBooks 覆盖全局默认字号只初始化新导入小说，不覆盖单书偏好。
+func TestGlobalDefaultReaderFontSizeOnlyAppliesToNewBooks(t *testing.T) {
+	t.Setenv("AppData", t.TempDir())
+	libraryPath := t.TempDir()
+	sourceDir := t.TempDir()
+	firstSourcePath := filepath.Join(sourceDir, "第一本.txt")
+	secondSourcePath := filepath.Join(sourceDir, "第二本.txt")
+	if err := os.WriteFile(firstSourcePath, []byte("第一章 开始\n第一本正文。\n"), 0o644); err != nil {
+		t.Fatalf("写入第一本测试小说失败: %v", err)
+	}
+	if err := os.WriteFile(secondSourcePath, []byte("第一章 开始\n第二本正文。\n"), 0o644); err != nil {
+		t.Fatalf("写入第二本测试小说失败: %v", err)
+	}
+
+	settings, err := SaveAppSettings(SaveAppSettingsRequest{DefaultReaderFontSize: 23})
+	if err != nil {
+		t.Fatalf("保存全局默认字号失败: %v", err)
+	}
+	if settings.DefaultReaderFontSize != 23 {
+		t.Fatalf("全局默认字号 = %d, want 23", settings.DefaultReaderFontSize)
+	}
+
+	firstResult, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-global-font-first",
+		SourcePath: firstSourcePath,
+		BookName:   "第一本",
+	})
+	if err != nil {
+		t.Fatalf("导入第一本失败: %v", err)
+	}
+	firstSession, err := OpenReadingSession(firstResult.Project.Book.BookPath)
+	if err != nil {
+		t.Fatalf("打开第一本阅读会话失败: %v", err)
+	}
+	if firstSession.State.Preferences.FontSize != 23 {
+		t.Fatalf("第一本初始字号 = %d, want 23", firstSession.State.Preferences.FontSize)
+	}
+
+	if _, err := SaveReadingPreferences(SaveReadingPreferencesRequest{
+		BookPath: firstResult.Project.Book.BookPath,
+		FontSize: 19,
+	}); err != nil {
+		t.Fatalf("保存第一本单书字号失败: %v", err)
+	}
+	if _, err := SaveAppSettings(SaveAppSettingsRequest{DefaultReaderFontSize: 16}); err != nil {
+		t.Fatalf("再次保存全局默认字号失败: %v", err)
+	}
+
+	secondResult, err := ConfirmNovelImport(libraryPath, ConfirmImportRequest{
+		BookID:     "book-global-font-second",
+		SourcePath: secondSourcePath,
+		BookName:   "第二本",
+	})
+	if err != nil {
+		t.Fatalf("导入第二本失败: %v", err)
+	}
+	reopenedFirstSession, err := OpenReadingSession(firstResult.Project.Book.BookPath)
+	if err != nil {
+		t.Fatalf("重新打开第一本阅读会话失败: %v", err)
+	}
+	if reopenedFirstSession.State.Preferences.FontSize != 19 {
+		t.Fatalf("第一本单书字号被覆盖为 %d, want 19", reopenedFirstSession.State.Preferences.FontSize)
+	}
+	secondSession, err := OpenReadingSession(secondResult.Project.Book.BookPath)
+	if err != nil {
+		t.Fatalf("打开第二本阅读会话失败: %v", err)
+	}
+	if secondSession.State.Preferences.FontSize != 16 {
+		t.Fatalf("第二本初始字号 = %d, want 16", secondSession.State.Preferences.FontSize)
+	}
+}
+
 // TestRemoveBookFromLibraryDeletesProjectData 覆盖书库移除会删除单书项目目录并刷新轻量索引。
 func TestRemoveBookFromLibraryDeletesProjectData(t *testing.T) {
 	libraryPath := t.TempDir()

@@ -40,7 +40,13 @@ func SetLibraryPath(libraryPath string) (LibraryState, error) {
 	if err != nil {
 		return LibraryState{}, err
 	}
-	if err := saveSettings(AppSettings{Version: 1, LibraryPath: cleanPath}); err != nil {
+	settings, err := loadSettings()
+	if err != nil {
+		return LibraryState{}, err
+	}
+	settings.LibraryPath = cleanPath
+	settings.LastOpenedBookPath = ""
+	if err := saveSettings(settings); err != nil {
 		return LibraryState{}, err
 	}
 	index = enrichLibraryReadingProgress(index)

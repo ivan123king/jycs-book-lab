@@ -46,6 +46,10 @@ export function DeleteStoryPlotCard(arg1) {
   return window['go']['main']['App']['DeleteStoryPlotCard'](arg1);
 }
 
+export function GetAppSettings() {
+  return window['go']['main']['App']['GetAppSettings']();
+}
+
 export function GetApplicationInfo() {
   return window['go']['main']['App']['GetApplicationInfo']();
 }
@@ -108,6 +112,10 @@ export function ReDetectNovelImport(arg1) {
 
 export function RemoveBookFromLibrary(arg1) {
   return window['go']['main']['App']['RemoveBookFromLibrary'](arg1);
+}
+
+export function SaveAppSettings(arg1) {
+  return window['go']['main']['App']['SaveAppSettings'](arg1);
 }
 
 export function SaveChapterContent(arg1) {

@@ -25,6 +25,8 @@ export function DeleteMaterial(arg1:library.DeleteMaterialRequest):Promise<libra
 
 export function DeleteStoryPlotCard(arg1:library.DeleteStoryPlotCardRequest):Promise<library.DeleteStoryPlotCardResult>;
 
+export function GetAppSettings():Promise<library.AppSettings>;
+
 export function GetApplicationInfo():Promise<main.ApplicationInfo>;
 
 export function GetChapterContent(arg1:library.ChapterContentRequest):Promise<library.ChapterContentResult>;
@@ -56,6 +58,8 @@ export function PreviewNovelImport():Promise<library.ImportDraft>;
 export function ReDetectNovelImport(arg1:string):Promise<library.ImportDraft>;
 
 export function RemoveBookFromLibrary(arg1:string):Promise<library.LibraryState>;
+
+export function SaveAppSettings(arg1:library.SaveAppSettingsRequest):Promise<library.AppSettings>;
 
 export function SaveChapterContent(arg1:library.SaveChapterContentRequest):Promise<library.ChapterContentResult>;
 

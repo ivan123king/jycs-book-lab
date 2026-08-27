@@ -1,5 +1,23 @@
 export namespace library {
 	
+	export class AppSettings {
+	    version: number;
+	    libraryPath: string;
+	    lastOpenedBookPath: string;
+	    defaultReaderFontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.libraryPath = source["libraryPath"];
+	        this.lastOpenedBookPath = source["lastOpenedBookPath"];
+	        this.defaultReaderFontSize = source["defaultReaderFontSize"];
+	    }
+	}
 	export class BookChapter {
 	    id: string;
 	    title: string;
@@ -1936,6 +1954,18 @@ export namespace library {
 		}
 	}
 	
+	export class SaveAppSettingsRequest {
+	    defaultReaderFontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveAppSettingsRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.defaultReaderFontSize = source["defaultReaderFontSize"];
+	    }
+	}
 	export class SaveChapterContentRequest {
 	    bookPath: string;
 	    chapterId: string;

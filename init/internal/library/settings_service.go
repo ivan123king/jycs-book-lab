@@ -20,7 +20,7 @@ func loadSettings() (AppSettings, error) {
 
 	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return settings, nil
+		return normalizeAppSettings(settings), nil
 	}
 	if err != nil {
 		return settings, fmt.Errorf("读取应用设置失败: %w", err)
@@ -28,17 +28,12 @@ func loadSettings() (AppSettings, error) {
 	if err := json.Unmarshal(content, &settings); err != nil {
 		return settings, fmt.Errorf("解析应用设置失败: %w", err)
 	}
-	if settings.Version == 0 {
-		settings.Version = 1
-	}
-	return settings, nil
+	return normalizeAppSettings(settings), nil
 }
 
 // saveSettings 将书库目录等全局偏好保存到应用系统数据目录。
 func saveSettings(settings AppSettings) error {
-	if settings.Version == 0 {
-		settings.Version = 1
-	}
+	settings = normalizeAppSettings(settings)
 	path, err := settingsPath()
 	if err != nil {
 		return err
@@ -47,6 +42,45 @@ func saveSettings(settings AppSettings) error {
 		return fmt.Errorf("创建应用设置目录失败: %w", err)
 	}
 	return writeJSONFileAtomic(path, settings)
+}
+
+// LoadAppSettings 返回设置页可编辑的应用级偏好，不包含任何单本书正式业务数据。
+func LoadAppSettings() (AppSettings, error) {
+	return loadSettings()
+}
+
+// SaveAppSettings 保存应用级默认阅读字号；已有小说仍读取各自项目目录中的字号偏好。
+func SaveAppSettings(request SaveAppSettingsRequest) (AppSettings, error) {
+	settings, err := loadSettings()
+	if err != nil {
+		return AppSettings{}, err
+	}
+	settings.DefaultReaderFontSize = request.DefaultReaderFontSize
+	if err := saveSettings(settings); err != nil {
+		return AppSettings{}, err
+	}
+	return loadSettings()
+}
+
+// defaultReadingPreferencesForNewBook 读取新导入小说的初始阅读偏好，之后随单书项目目录迁移。
+func defaultReadingPreferencesForNewBook() (ReadingPreferences, error) {
+	settings, err := loadSettings()
+	if err != nil {
+		return ReadingPreferences{}, err
+	}
+	return ReadingPreferences{FontSize: settings.DefaultReaderFontSize}, nil
+}
+
+// normalizeAppSettings 补齐旧设置文件缺失的默认值，并限制字号在阅读页支持范围内。
+func normalizeAppSettings(settings AppSettings) AppSettings {
+	if settings.Version == 0 {
+		settings.Version = 1
+	}
+	if settings.DefaultReaderFontSize == 0 {
+		settings.DefaultReaderFontSize = defaultReaderFontSize
+	}
+	settings.DefaultReaderFontSize = clampInt(settings.DefaultReaderFontSize, minReaderFontSize, maxReaderFontSize)
+	return settings
 }
 
 // settingsPath 返回应用级设置文件路径，只用于全局偏好。
