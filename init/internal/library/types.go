@@ -644,16 +644,14 @@ type ChapterMemoCollection struct {
 	Items   []ChapterMemo `json:"items"`
 }
 
-// ReadingSession 是前端打开阅读工作台所需的当前书完整上下文。
+// ReadingSession 是前端打开阅读工作台所需的轻量上下文，不携带全量拆解卡片列表。
 type ReadingSession struct {
-	Project             BookProject                  `json:"project"`
-	State               ReadingState                 `json:"state"`
-	CurrentChapter      BookChapter                  `json:"currentChapter"`
-	ChapterContent      string                       `json:"chapterContent"`
-	Plan                DeconstructionPlan           `json:"plan"`
-	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
-	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
-	ChapterMemos        ChapterMemoCollection        `json:"chapterMemos"`
+	Project        BookProject           `json:"project"`
+	State          ReadingState          `json:"state"`
+	CurrentChapter BookChapter           `json:"currentChapter"`
+	ChapterContent string                `json:"chapterContent"`
+	Plan           DeconstructionPlan    `json:"plan"`
+	ChapterMemos   ChapterMemoCollection `json:"chapterMemos"`
 }
 
 // ChapterContentRequest 指定要读取的单本书章节正文。
@@ -733,12 +731,10 @@ type CreateDeconstructionRequest struct {
 	TagIDs        []string          `json:"tagIds"`
 }
 
-// CreateDeconstructionResult 返回本次保存后的来源片段和拆解卡片。
+// CreateDeconstructionResult 返回本次保存后的来源片段和拆解卡片，避免阅读页接收全量卡片集合。
 type CreateDeconstructionResult struct {
-	SourceText          SourceText                   `json:"sourceText"`
-	Card                DeconstructionCard           `json:"card"`
-	SourceTexts         SourceTextCollection         `json:"sourceTexts"`
-	DeconstructionCards DeconstructionCardCollection `json:"deconstructionCards"`
+	SourceText SourceText         `json:"sourceText"`
+	Card       DeconstructionCard `json:"card"`
 }
 
 // UpdateDeconstructionCardRequest 承载写作手法拆解卡片正文和标签的编辑结果。

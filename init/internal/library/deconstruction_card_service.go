@@ -122,10 +122,8 @@ func CreateDeconstructionCard(request CreateDeconstructionRequest) (CreateDecons
 	}
 
 	return CreateDeconstructionResult{
-		SourceText:          sourceText,
-		Card:                card,
-		SourceTexts:         sourceTexts,
-		DeconstructionCards: cards,
+		SourceText: sourceText,
+		Card:       card,
 	}, nil
 }
 

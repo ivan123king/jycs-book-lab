@@ -598,9 +598,6 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if created.Card.AnalysisKind != analysisKindWritingTechnique {
 		t.Fatalf("拆解卡片类型 = %s, want %s", created.Card.AnalysisKind, analysisKindWritingTechnique)
 	}
-	if len(created.SourceTexts.Items) != 1 || len(created.DeconstructionCards.Items) != 1 {
-		t.Fatalf("选文或拆解数量不正确: %+v / %+v", created.SourceTexts.Items, created.DeconstructionCards.Items)
-	}
 	workspace, err := OpenDeconstructionCardsWorkspace(bookPath)
 	if err != nil {
 		t.Fatalf("打开写作手法拆解工作区失败: %v", err)
@@ -626,7 +623,11 @@ func TestReadingWorkbenchPersistsStateAndDeconstruction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建模板外写作手法拆解失败: %v", err)
 	}
-	if len(customCreated.SourceTexts.Items) != 1 || len(customCreated.DeconstructionCards.Items) != 2 ||
+	workspace, err = OpenDeconstructionCardsWorkspace(bookPath)
+	if err != nil {
+		t.Fatalf("重新打开写作手法拆解工作区失败: %v", err)
+	}
+	if len(workspace.SourceTexts.Items) != 1 || len(workspace.DeconstructionCards.Items) != 2 ||
 		customCreated.Card.PlanTypeName != "叙事视角" || customCreated.Card.DimensionName != "视角距离" {
 		t.Fatalf("模板外类型维度未复用来源或保存快照: %+v", customCreated)
 	}

@@ -32,14 +32,6 @@ func OpenReadingSession(bookPath string) (ReadingSession, error) {
 	if err != nil {
 		return ReadingSession{}, err
 	}
-	sourceTexts, err := loadSourceTexts(bookPath)
-	if err != nil {
-		return ReadingSession{}, err
-	}
-	cards, err := loadDeconstructionCards(bookPath)
-	if err != nil {
-		return ReadingSession{}, err
-	}
 	chapterMemos, err := loadChapterMemos(bookPath)
 	if err != nil {
 		return ReadingSession{}, err
@@ -48,14 +40,12 @@ func OpenReadingSession(bookPath string) (ReadingSession, error) {
 	state.LastPosition.ChapterID = currentChapter.ID
 	state.LastPosition.ChapterOrder = currentChapter.Order
 	return ReadingSession{
-		Project:             project,
-		State:               state,
-		CurrentChapter:      currentChapter,
-		ChapterContent:      content,
-		Plan:                plan,
-		SourceTexts:         sourceTexts,
-		DeconstructionCards: cards,
-		ChapterMemos:        chapterMemos,
+		Project:        project,
+		State:          state,
+		CurrentChapter: currentChapter,
+		ChapterContent: content,
+		Plan:           plan,
+		ChapterMemos:   chapterMemos,
 	}, nil
 }
 

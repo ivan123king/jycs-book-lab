@@ -220,26 +220,6 @@ const dimensionOptions = computed(() =>
   })),
 )
 
-const sourceTextsById = computed(() => {
-  const map = new Map<string, library.SourceText>()
-  for (const source of session.value?.sourceTexts.items ?? []) {
-    map.set(source.id, source)
-  }
-  return map
-})
-
-const deconstructionCountByChapter = computed(() => {
-  const counts = new Map<string, number>()
-  for (const card of session.value?.deconstructionCards.items ?? []) {
-    const source = sourceTextsById.value.get(card.sourceTextId)
-    if (!source) {
-      continue
-    }
-    counts.set(source.chapterId, (counts.get(source.chapterId) ?? 0) + 1)
-  }
-  return counts
-})
-
 const chapterMemoByChapter = computed(() => {
   const map = new Map<string, library.ChapterMemo>()
   for (const memo of session.value?.chapterMemos?.items ?? []) {
@@ -691,7 +671,7 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
   savingCard.value = true
   cardError.value = ''
   try {
-    const result = await CreateDeconstructionCard({
+    await CreateDeconstructionCard({
       bookPath,
       selection: selectedSource.value,
       planTypeId: selectedPlanType.value.id,
@@ -702,10 +682,6 @@ async function saveDeconstruction(keepDialogOpen: boolean) {
       fieldValues: {},
       tagIds: splitTags(tagInput.value),
     } as library.CreateDeconstructionRequest)
-    if (session.value) {
-      session.value.sourceTexts = result.sourceTexts
-      session.value.deconstructionCards = result.deconstructionCards
-    }
     readingNotice.value = '拆解已保存。'
     deconstructionContent.value = ''
     tagInput.value = ''
@@ -1085,10 +1061,6 @@ function clampNumber(value: number, minValue: number, maxValue: number) {
   return Math.min(maxValue, Math.max(minValue, value))
 }
 
-function chapterCardCount(chapterId: string) {
-  return deconstructionCountByChapter.value.get(chapterId) ?? 0
-}
-
 function hasChapterMemo(chapterId: string) {
   return Boolean(chapterMemoByChapter.value.get(chapterId))
 }
@@ -1347,7 +1319,7 @@ onBeforeUnmount(() => {
                 </n-button>
               </div>
               <small>
-                第 {{ chapter.order }} 章 · {{ chapterCardCount(chapter.id) }} 张卡片
+                第 {{ chapter.order }} 章
                 <span v-if="hasChapterMemo(chapter.id)"> · 已有小记</span>
                 · 右键可拆分
               </small>
